@@ -230,6 +230,11 @@ Resources:
         - Statement:
             - Effect: Allow
               Action:
+                - bedrock-mantle:CallWithBearerToken
+              Resource: '*'
+        - Statement:
+            - Effect: Allow
+              Action:
                 - aws-marketplace:Subscribe
                 - aws-marketplace:Unsubscribe
                 - aws-marketplace:ViewSubscriptions

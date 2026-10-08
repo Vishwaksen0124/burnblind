@@ -75,8 +75,9 @@ Never commit secrets.
 
 `INVESTIGATION_MODEL_PROVIDER` selects the model connection independently of
 the Strands investigation agent. `bedrock-mantle` is the deployed default and
-uses the OpenAI-compatible Mantle endpoint with AWS credentials; its IAM role
-is scoped to the account's default Bedrock project. `bedrock` selects the
+uses the OpenAI-compatible Mantle endpoint with AWS credentials; inference is
+scoped to the account's default Bedrock project, with a separate permission
+for short-lived Mantle bearer-token authentication. `bedrock` selects the
 Bedrock Runtime provider. `sagemaker` requires an OpenAI chat-compatible
 endpoint and `SAGEMAKER_ENDPOINT_NAME`; its region follows `AWS_REGION`.
 Provider selection changes only the model connection, not the Strands agent,

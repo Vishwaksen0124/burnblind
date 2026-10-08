@@ -187,20 +187,24 @@ The deployed model-provider boundary is:
 
 ```text
 Candidate event
-      ↓
-Strands Agent ── DeepSeek V3.2 on Bedrock Mantle
-      ↓
-Event-scoped read-only evidence tools
-      ↓
-Evidence-cited structured report
-      ↓
-DynamoDB → dashboard UI
+    ↓
+Strands agent
+    ↓
+DeepSeek V3.2 on Bedrock Mantle
+    ↕
+Event-scoped tools: event, satellite, history, weather, exposure, sensors
+    ↓
+Structured, evidence-cited investigation
+    ↓
+DynamoDB
+    ↓
+BurnBlind UI
 ```
 
 The model provider remains independently configurable while Strands owns the
 agent loop, tool execution, and structured report contract. The deployed
-Mantle model ID is `deepseek.v3.2`; the Lambda role is scoped to the default
-Bedrock project.
+Mantle model ID is `deepseek.v3.2`; inference is scoped to the default Bedrock
+project, with a separate permission for short-lived bearer-token authentication.
 
 The model provider is not the source of environmental truth. Deterministic evidence tools remain authoritative.
 

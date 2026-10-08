@@ -53,11 +53,15 @@ The investigator uses Strands Agents with Amazon Bedrock DeepSeek V3.2
 (`deepseek.v3.2`) through the `bedrock-mantle` OpenAI-compatible endpoint in
 the stack region. The verified Mantle call succeeded with the existing AWS
 credentials. The worker role grants `bedrock-mantle:CreateInference` only for
-the account's default project; its separate Bedrock Runtime permission is
-scoped to the configured model. Reserved concurrency is two. The stack has no
+the account's default project, plus the required Mantle bearer-token action.
+Its separate Bedrock Runtime permission is scoped to the configured model.
+Reserved concurrency is two. The stack has no
 scheduled agent trigger. The DynamoDB stream qualification worker runs only
 when score features are attached; the current replay seeder does not derive
-those features.
+those features. After adding the missing
+`bedrock-mantle:CallWithBearerToken` permission, a retry of one previously
+failed event completed and its source-cited report was persisted to DynamoDB.
+The Lambda log for that invocation contains no error.
 
 The Amplify publish workflow assumes the role provisioned by
 `infrastructure/sam/github-actions-role.yaml`. GitHub OIDC subjects include
