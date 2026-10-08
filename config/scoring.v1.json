@@ -1,0 +1,27 @@
+{
+  "version": "score-v1",
+  "feature_version": "features-v1",
+  "weights": {
+    "blindness": {
+      "observation_gap_risk": 0.3,
+      "sensor_coverage_gap": 0.3,
+      "data_quality_risk": 0.2,
+      "timing_risk": 0.2
+    },
+    "fire_likelihood": {
+      "thermal_signal": 0.4,
+      "historical_activity": 0.2,
+      "independent_detection_support": 0.4
+    }
+  },
+  "uncertainty": {
+    "sensor_disagreement_penalty": 0.25
+  },
+  "triggers": {
+    "priority_high": 0.75,
+    "uncertainty_high": 0.7,
+    "blindness_high": 0.7,
+    "fire_likelihood_moderate": 0.5,
+    "exposure_high": 0.75
+  }
+}
