@@ -53,11 +53,13 @@ Resources:
                 Effect: Allow
                 Action: amplify:GetApp
                 Resource: !Sub 'arn:${AWS::Partition}:amplify:${AWS::Region}:${AWS::AccountId}:apps/${AmplifyAppId}'
-              - Sid: PublishOnlyConfiguredBranch
+              - Sid: CreateDeploymentOnlyForConfiguredBranch
                 Effect: Allow
-                Action:
-                  - amplify:CreateDeployment
-                  - amplify:StartDeployment
+                Action: amplify:CreateDeployment
+                Resource: !Sub 'arn:${AWS::Partition}:amplify:${AWS::Region}:${AWS::AccountId}:apps/${AmplifyAppId}/branches/${AmplifyBranch}/deployments/*'
+              - Sid: StartDeploymentOnlyForConfiguredBranch
+                Effect: Allow
+                Action: amplify:StartDeployment
                 Resource: !Sub 'arn:${AWS::Partition}:amplify:${AWS::Region}:${AWS::AccountId}:apps/${AmplifyAppId}/branches/${AmplifyBranch}'
               - Sid: InspectOnlyConfiguredBranchJobs
                 Effect: Allow
