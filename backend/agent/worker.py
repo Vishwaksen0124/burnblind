@@ -6,7 +6,7 @@ import json
 import os
 
 from backend.agent.evidence import DynamoEvidenceRepository
-from backend.agent.runtime import investigate_event
+from backend.agent.runtime import AGENT_VERSION, PROMPT_VERSION, investigate_event
 from backend.agent.storage import DynamoInvestigationStore
 from backend.api.dynamodb_repository import DynamoCandidateEventRepository
 
@@ -28,7 +28,11 @@ def lambda_handler(event, context):
         investigations.set_running(event_id)
         try:
             report = investigate_event(event_id, events, evidence)
-            investigations.complete(event_id, report)
+            provider = os.environ.get("INVESTIGATION_MODEL_PROVIDER", "bedrock").strip().lower()
+            model_id = os.environ.get("BEDROCK_MODEL_ID", "deepseek.v3.2")
+            if provider == "sagemaker":
+                model_id = f"sagemaker:{os.environ.get('SAGEMAKER_ENDPOINT_NAME', '')}"
+            investigations.complete(event_id, report, model_id, AGENT_VERSION, PROMPT_VERSION)
         except Exception as exc:
             investigations.fail(event_id, _error_code(exc))
             raise

@@ -188,6 +188,37 @@ def handle_request(
             status, response = _error(400, "INVALID_CURSOR", str(exc))
         except ValueError as exc:
             status, response = _error(400, "INVALID_QUERY", str(exc))
+    elif method == "GET" and route == "/investigations":
+        if investigation_store is None:
+            status, response = _error(503, "INVESTIGATION_STORE_UNAVAILABLE", "Investigation records are not configured.")
+        else:
+            try:
+                limit = int(query.get("limit", "50"))
+                if not 1 <= limit <= 100:
+                    raise ValueError
+                records, next_cursor = investigation_store.list(limit, query.get("cursor"))
+                status, response = 200, {
+                    "items": [
+                        {
+                            "event_id": item.get("event_id"),
+                            "status": item.get("status", "UNKNOWN"),
+                            "investigation": item.get("report"),
+                            "requested_at_utc": item.get("requested_at_utc"),
+                            "started_at_utc": item.get("started_at_utc"),
+                            "completed_at_utc": item.get("completed_at_utc"),
+                            "updated_at_utc": item.get("updated_at_utc"),
+                            "model_id": item.get("model_id"),
+                            "agent_version": item.get("agent_version"),
+                            "prompt_version": item.get("prompt_version"),
+                            "error_code": item.get("error_code"),
+                            "trigger_reasons": item.get("trigger_reasons", []),
+                        }
+                        for item in records
+                    ],
+                    "next_cursor": next_cursor,
+                }
+            except (TypeError, ValueError):
+                status, response = _error(400, "INVALID_QUERY", "limit must be an integer from 1 to 100.")
     elif route.startswith("/events/"):
         parts = route.split("/")
         if len(parts) not in (3, 4) or not _EVENT_ID.fullmatch(parts[2]):
@@ -210,6 +241,10 @@ def handle_request(
                         "requested_at_utc": record.get("requested_at_utc"),
                         "started_at_utc": record.get("started_at_utc"),
                         "completed_at_utc": record.get("completed_at_utc"),
+                        "updated_at_utc": record.get("updated_at_utc"),
+                        "model_id": record.get("model_id"),
+                        "agent_version": record.get("agent_version"),
+                        "prompt_version": record.get("prompt_version"),
                         "error_code": record.get("error_code"),
                         "trigger_reasons": record.get("trigger_reasons", []),
                     }

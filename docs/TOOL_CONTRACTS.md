@@ -2,7 +2,10 @@
 
 ## Purpose
 
-Agent tools are deterministic evidence interfaces. The model should reason over their outputs, not directly over arbitrary infrastructure.
+These are service-side evidence adapters. The application calls every required
+adapter once for one event, assembles the results into a JSON packet, then gives
+that packet to Strands as model input. They are not exposed as callable model
+tools, which keeps lookups predictable and avoids model-side request fan-out.
 
 ## get_event
 
