@@ -60,7 +60,7 @@ Resources:
               - Sid: StartDeploymentOnlyForConfiguredBranch
                 Effect: Allow
                 Action: amplify:StartDeployment
-                Resource: !Sub 'arn:${AWS::Partition}:amplify:${AWS::Region}:${AWS::AccountId}:apps/${AmplifyAppId}/branches/${AmplifyBranch}'
+                Resource: !Sub 'arn:${AWS::Partition}:amplify:${AWS::Region}:${AWS::AccountId}:apps/${AmplifyAppId}/branches/${AmplifyBranch}/deployments/start'
               - Sid: InspectOnlyConfiguredBranchJobs
                 Effect: Allow
                 Action: amplify:GetJob
