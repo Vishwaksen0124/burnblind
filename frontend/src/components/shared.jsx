@@ -17,7 +17,7 @@ export function Header({ page }) {
       {links.map(([id, href, label]) => <a key={id} href={href} aria-current={page === id ? 'page' : undefined}>{label}</a>)}
     </nav>
     <span className="mode-badge"><i /> HISTORICAL REPLAY · 2025</span>
-    <a className="landing-nav-cta" href="#monitoring">Explore monitoring <span aria-hidden="true">→</span></a>
+    {page !== 'monitoring' && <a className="landing-nav-cta" href="#monitoring">Explore monitoring <span aria-hidden="true">→</span></a>}
   </header>;
 }
 

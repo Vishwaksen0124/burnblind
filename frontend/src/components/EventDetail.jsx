@@ -9,6 +9,7 @@ export default function EventDetail({ event, onClose }) {
   const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState(false);
   const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState('event');
 
   const refresh = useCallback(async (signal) => {
     const value = await getInvestigation(event.event_id, signal);
@@ -32,6 +33,7 @@ export default function EventDetail({ event, onClose }) {
     };
     setLoading(true);
     setRecord(null);
+    setActiveTab('event');
     poll();
     return () => { controller.abort(); window.clearTimeout(timer); };
   }, [refresh]);
@@ -50,15 +52,39 @@ export default function EventDetail({ event, onClose }) {
     }
   }
 
+  function handleTabKeyDown(event) {
+    const tabs = ['event', 'investigation'];
+    const currentIndex = tabs.indexOf(activeTab);
+    let nextIndex = currentIndex;
+    if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabs.length;
+    else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+    else if (event.key === 'Home') nextIndex = 0;
+    else if (event.key === 'End') nextIndex = tabs.length - 1;
+    else return;
+    event.preventDefault();
+    setActiveTab(tabs[nextIndex]);
+    document.getElementById(`${tabs[nextIndex]}-tab`)?.focus();
+  }
+
   const report = record?.investigation;
   return <section className="detail-section panel" aria-labelledby="event-detail-title">
     <div className="detail-heading"><div><p className="eyebrow">CANDIDATE EVENT · SOURCE EVIDENCE</p><h2 id="event-detail-title">Potential thermal detection</h2></div><button className="close-button" onClick={onClose} aria-label="Close event details">×</button></div>
-    <div className="detail-grid">
-      <div className="detail-block"><span className="detail-label">OBSERVED</span><strong>{formatTimestamp(event.detected_at_utc)}</strong><small>Last observation · {formatTimestamp(event.last_observed_at_utc)}</small></div>
-      <div className="detail-block"><span className="detail-label">LOCATION</span><strong>{formatCoordinate(event.latitude, 'N')} · {formatCoordinate(event.longitude, 'E')}</strong><small>Punjab + Haryana replay region</small></div>
-      <div className="detail-block"><span className="detail-label">OBSERVED EVIDENCE</span><strong>{event.sources.join(' · ') || 'Source unavailable'}</strong><small>{event.detection_count} grouped {event.detection_count === 1 ? 'detection' : 'detections'}</small></div>
-      <div className={`detail-block ${event.score_status === 'HEURISTIC_SCORES_AVAILABLE' ? '' : 'detail-unavailable'}`}><span className="detail-label">ASSESSMENT</span><strong>{event.score_status === 'HEURISTIC_SCORES_AVAILABLE' ? 'Heuristic scores' : 'Not calculated'}</strong><small>{event.score_status === 'HEURISTIC_SCORES_AVAILABLE' ? `Fire signal ${formatScore(event.fire_likelihood)} · uncertainty ${formatScore(event.uncertainty)} · priority ${formatScore(event.priority_score)}` : 'Required scoring features are not available.'}</small></div>
+    <div className="detail-tabs" role="tablist" aria-label="Event review sections" onKeyDown={handleTabKeyDown}>
+      <button id="event-tab" role="tab" aria-selected={activeTab === 'event'} aria-controls="event-panel" tabIndex={activeTab === 'event' ? 0 : -1} onClick={() => setActiveTab('event')}>Event details</button>
+      <button id="investigation-tab" role="tab" aria-selected={activeTab === 'investigation'} aria-controls="investigation-panel" tabIndex={activeTab === 'investigation' ? 0 : -1} onClick={() => setActiveTab('investigation')}>
+        Investigation{record?.status === 'FAILED' && <span className="tab-state tab-state-failed">Failed</span>}{record?.status === 'COMPLETED' && <span className="tab-state tab-state-complete">Ready</span>}
+      </button>
     </div>
+    <div id="event-panel" className="detail-tab-panel" role="tabpanel" aria-labelledby="event-tab" hidden={activeTab !== 'event'}>
+      <div className="detail-grid">
+        <div className="detail-block"><span className="detail-label">OBSERVED</span><strong>{formatTimestamp(event.detected_at_utc)}</strong><small>Last observation · {formatTimestamp(event.last_observed_at_utc)}</small></div>
+        <div className="detail-block"><span className="detail-label">LOCATION</span><strong>{formatCoordinate(event.latitude, 'N')} · {formatCoordinate(event.longitude, 'E')}</strong><small>Punjab + Haryana replay region</small></div>
+        <div className="detail-block"><span className="detail-label">OBSERVED EVIDENCE</span><strong>{event.sources.join(' · ') || 'Source unavailable'}</strong><small>{event.detection_count} grouped {event.detection_count === 1 ? 'detection' : 'detections'}</small></div>
+        <div className={`detail-block ${event.score_status === 'HEURISTIC_SCORES_AVAILABLE' ? '' : 'detail-unavailable'}`}><span className="detail-label">ASSESSMENT</span><strong>{event.score_status === 'HEURISTIC_SCORES_AVAILABLE' ? 'Heuristic scores' : 'Not calculated'}</strong><small>{event.score_status === 'HEURISTIC_SCORES_AVAILABLE' ? `Fire signal ${formatScore(event.fire_likelihood)} · uncertainty ${formatScore(event.uncertainty)} · priority ${formatScore(event.priority_score)}` : 'Required scoring features are not available.'}</small></div>
+      </div>
+      <div className="detail-disclosure"><span>EVENT REFERENCE</span><code>{event.event_id}</code><span className="disclosure-separator" /><span>Scores, independent fire confirmation, and population exposure are unavailable for this replay.</span></div>
+    </div>
+    <div id="investigation-panel" className="detail-tab-panel" role="tabpanel" aria-labelledby="investigation-tab" hidden={activeTab !== 'investigation'}>
     <div className="investigation-report" aria-live="polite">
       <div className="investigation-report-heading"><div><p className="eyebrow">EVIDENCE REVIEW</p><h3>Investigation</h3></div><StatusBadge status={loading ? 'LOADING' : record?.status || 'NOT_REQUESTED'} /></div>
       {loading && <p className="report-note">Checking investigation status…</p>}
@@ -69,7 +95,7 @@ export default function EventDetail({ event, onClose }) {
       {error && <p className="report-error" role="alert">{error}</p>}
       {report && <InvestigationFindings report={report} />}
     </div>
-    <div className="detail-disclosure"><span>EVENT REFERENCE</span><code>{event.event_id}</code><span className="disclosure-separator" /><span>Scores, independent fire confirmation, and population exposure are unavailable for this replay.</span></div>
+    </div>
   </section>;
 }
 

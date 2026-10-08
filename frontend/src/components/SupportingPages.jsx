@@ -28,12 +28,12 @@ export function DataPage() {
   return <>
     <PageHeading eyebrow="TRANSPARENCY" title="Data & methodology">Understand what the current replay can show, what it cannot, and how future assessments will be grounded.</PageHeading>
     <section className="source-grid" aria-label="Data sources">{SOURCES.map((source) => <article className="source-card panel" key={source.name}><span className="source-type">{source.type}</span><h2><a href={source.url} target="_blank" rel="noreferrer">{source.name}<span aria-hidden="true"> ↗</span></a></h2><p>{source.provides}</p><div className="source-limit"><strong>LIMITATION</strong><p>{source.limit}</p></div></article>)}</section>
-    <section className="terms-panel panel"><p className="eyebrow">TERMINOLOGY</p><dl>
-      <div><dt>Monitoring blind spot</dt><dd>A gap or limitation in observation coverage; it does not prove an event occurred.</dd></div>
-      <div><dt>Cross-sensor disagreement</dt><dd>Different sensors report different observations or coverage. This is evidence to investigate, not proof that a sensor missed a fire.</dd></div>
-      <div><dt>Potential fire event</dt><dd>A candidate grouped from source detections. Confirmation requires independent ground truth.</dd></div>
-      <div><dt>Estimated exposure</dt><dd>A modeled estimate that depends on population and environmental inputs; it is not a measured impact.</dd></div>
-    </dl></section>
+    <section className="terms-panel panel"><p className="eyebrow">TERMINOLOGY</p><div className="terms-accordion">
+      <details><summary>Monitoring blind spot</summary><p>A gap or limitation in observation coverage; it does not prove an event occurred.</p></details>
+      <details><summary>Cross-sensor disagreement</summary><p>Different sensors report different observations or coverage. This is evidence to investigate, not proof that a sensor missed a fire.</p></details>
+      <details><summary>Potential fire event</summary><p>A candidate grouped from source detections. Confirmation requires independent ground truth.</p></details>
+      <details><summary>Estimated exposure</summary><p>A modeled estimate that depends on population and environmental inputs; it is not a measured impact.</p></details>
+    </div></section>
   </>;
 }
 
