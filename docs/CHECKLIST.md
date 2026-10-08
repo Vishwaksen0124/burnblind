@@ -41,27 +41,28 @@
 
 ## Agent
 
-- [ ] Trigger policy
-- [ ] Strands SDK
-- [ ] Model provider
-- [ ] Tool schemas
-- [ ] Evidence grounding
-- [ ] Structured output
-- [ ] Evaluation set
-- [ ] Fallback
+- [x] DynamoDB stream qualification with configured score thresholds
+- [x] Analyst override request from event detail
+- [x] Strands SDK
+- [x] Amazon Bedrock DeepSeek V3.2 provider
+- [x] Read-only, event-scoped evidence tools
+- [x] Evidence ID grounding and structured output
+- [ ] Broader model evaluation set
+- [x] Failure status preserves candidate event for human review
 
 ## AWS
 
 - [x] S3 (private encrypted sample artifact bucket)
-- [ ] SQS
-- [ ] DLQ
+- [x] FIFO SQS investigation queue
+- [x] FIFO DLQ with bounded retry
+- [x] DynamoDB Streams score qualification function
 - [x] DynamoDB
 - [x] API Lambda
 - [x] API Gateway
 - [ ] EventBridge
 - [x] CloudWatch log retention
 - [x] Amplify manual deployment
-- [x] GitHub Actions CI/CD workflow and least-privilege OIDC role template prepared (activation pending repository)
+- [x] Public GitHub repository and GitHub Actions OIDC CI/CD
 
 ## Frontend
 
@@ -69,7 +70,7 @@
 - [ ] Product
 - [x] How it works
 - [x] Dashboard (historical replay mode)
-- [x] Investigation status page (agent implementation pending)
+- [x] Investigation status and report UI
 - [x] Data & methodology
 - [x] Error states
 - [x] Loading states
@@ -83,13 +84,13 @@
 
 - [ ] Unit tests
 - [ ] Integration tests
-- [ ] Agent tests
+- [x] Agent grounding and event-scope tests
 - [ ] End-to-end test
 - [ ] Security review
 - [ ] Deployment smoke test
 - [ ] Demo rehearsal
-- [ ] Public GitHub
-- [ ] Public demo URL
+- [x] Public GitHub
+- [x] Public demo URL
 
 - [ ] Build-window compliance checked
 - [ ] Open-Meteo weather source verified

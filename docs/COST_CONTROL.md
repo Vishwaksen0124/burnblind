@@ -11,7 +11,9 @@ Keep the hackathon deployment within available AWS Free Tier/credits where pract
 - process only the MVP geography
 - download small data windows
 - cache/reuse historical data
-- trigger the agent only for qualifying events
+- invoke the agent only for score-qualified events; unscored candidates are skipped
+- retain the analyst override for deliberate manual review
+- cap model output at 900 tokens and worker concurrency at two
 - use a mock model for tests
 - cap investigation retries
 - use an SQS DLQ
@@ -23,8 +25,8 @@ Keep the hackathon deployment within available AWS Free Tier/credits where pract
 
 - [ ] No accidental high-frequency polling
 - [ ] No repeated multi-year satellite download
-- [ ] No agent invocation for every event
-- [ ] SQS retry count bounded
+- [x] Automatic invocation requires a versioned score qualification decision
+- [x] SQS retry count bounded with a DLQ
 - [ ] CloudWatch retention checked
 - [ ] AWS budget/cost alert configured if available
 - [ ] Demo uses deterministic replay where live calls are unnecessary

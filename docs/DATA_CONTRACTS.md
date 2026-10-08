@@ -52,15 +52,29 @@ These are the canonical contracts shared by ingestion, processing, API, storage,
   "prompt_version": "prompt-v1",
   "started_at_utc": "2026-10-09T11:41:00Z",
   "completed_at_utc": "2026-10-09T11:42:00Z",
-  "classification": "HIGH_PRIORITY",
-  "confidence": 0.84,
-  "evidence": [],
+  "classification": "REVIEW_REQUIRED",
+  "evidence": [
+    {"evidence_id": "obs_001", "evidence_type": "SATELLITE", "source": "GK2A", "summary": "Source record attached."}
+  ],
   "contradictions": [],
   "missing_evidence": [],
-  "reasoning_summary": "",
+  "summary": "A source record is available for analyst review.",
   "recommended_action": "HUMAN_VERIFICATION"
 }
 ```
+
+The model report allows `REVIEW_REQUIRED` or `INSUFFICIENT_EVIDENCE`; model
+confidence is not emitted. Every cited evidence ID is validated against
+read-only tool output.
+
+## Score features for automatic qualification
+
+The DynamoDB event record may include a `score_features` map. Its accepted
+normalized field names are the `ScoreFeatures` contract in
+`backend/scoring/engine.py` (each numeric value is in `[0, 1]`; unavailable
+values are omitted or null). DynamoDB Streams evaluates the map against
+`config/scoring.v1.json`. Records without numeric features are not evaluated or
+queued; see `docs/SCORING.md` for the qualification rules.
 
 ## Status enums
 

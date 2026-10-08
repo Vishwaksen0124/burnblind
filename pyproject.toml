@@ -12,6 +12,7 @@ dependencies = ["pyproj>=3.6,<4"]
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
 aws = ["boto3>=1.35,<2"]
+agent = ["strands-agents==1.58.1", "boto3>=1.35,<2"]
 
 [tool.setuptools.packages.find]
 include = ["backend*"]

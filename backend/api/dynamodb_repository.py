@@ -30,6 +30,22 @@ class DynamoCandidateEventRepository:
         item = result.get("Item")
         return _to_event(item) if item else None
 
+    def get_scoring_context(self, event_id: str) -> dict[str, Any] | None:
+        item = self._table.get_item(Key={"event_id": event_id}, ConsistentRead=True).get("Item")
+        if not item or not item.get("score_version"):
+            return None
+        keys = (
+            "blindness_score", "fire_likelihood_score", "uncertainty",
+            "priority_score", "score_version", "feature_version",
+            "evidence_completeness", "investigation_qualifies",
+            "investigation_trigger_reasons", "investigation_status",
+        )
+        return {
+            key: _plain_number(item[key])
+            for key in keys
+            if key in item
+        }
+
     def list(
         self,
         filters: EventFilters,
@@ -144,3 +160,12 @@ def _to_event(item: dict) -> CandidateEvent:
         data_mode=item["data_mode"],
         processing_version=item["processing_version"],
     )
+
+
+def _plain_number(value):
+    if isinstance(value, (int, float, bool)):
+        return value
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return value

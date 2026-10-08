@@ -212,37 +212,45 @@ Every feature:
 
 ## Phase 14 — Investigation Agent
 
-**Gate:** deterministic event scoring, event persistence, and evidence tools work before the model is connected.
+**Status:** Agent worker and automatic DynamoDB stream qualification are
+implemented. Events qualify from versioned normalized score features; replay
+seed rows have no score features and therefore do not auto-enqueue. Analysts
+can still request an override from the event detail view.
 
-- [ ] define provider abstraction
-- [ ] create mock/local model adapter for tests
+- [x] define provider configuration through Bedrock model ID and region
+- [x] inject a fake agent factory for deterministic runtime tests
 
 
-- [ ] select model
-- [ ] configure Strands
-- [ ] agent instructions
-- [ ] output schema
-- [ ] `get_event`
-- [ ] `get_satellite_evidence`
-- [ ] `get_historical_context`
-- [ ] `get_weather_context`
-- [ ] `get_exposure_context`
-- [ ] `get_sensor_comparison`
-- [ ] tool validation
-- [ ] evidence grounding
-- [ ] trigger policy
-- [ ] fallback behavior
+- [x] select Amazon Bedrock DeepSeek V3.2
+- [x] configure Strands
+- [x] agent instructions
+- [x] output schema
+- [x] `get_event`
+- [x] `get_satellite_evidence`
+- [x] `get_historical_context`
+- [x] `get_weather_context`
+- [x] `get_exposure_context`
+- [x] `get_sensor_comparison`
+- [x] tool validation and requested-event scoping
+- [x] evidence grounding
+- [x] DynamoDB stream evaluates the existing versioned investigation trigger
+- [x] analyst override request available in the event detail view
+- [x] empty feature records do not qualify from missingness alone
+- [x] failed run leaves candidate event available for human review
 
-**Gate:** Agent must use real deterministic tools before UI integration.
+The event detail UI presents qualification reasons, report status, and findings.
+The seed pipeline does not yet derive `score_features`; the stream trigger
+activates when a deterministic feature producer writes those normalized values.
+Tool outputs remain source-backed; unavailable evidence is described explicitly.
 
 ## Phase 15 — Agent evaluation
 
-- [ ] 10+ test scenarios
+- [ ] 10+ model evaluation scenarios (requires additional source fixtures)
 - [ ] expected evidence
 - [ ] expected classification
 - [ ] missing-data tests
 - [ ] contradiction tests
-- [ ] hallucination checks
+- [x] unsupported evidence ID rejection
 - [ ] structured-output validation
 
 ## Phase 16 — API

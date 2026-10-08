@@ -30,25 +30,13 @@ an agent would not be justified.
 
 ## 3. Trigger policy
 
-Centralize the trigger policy.
-
-```text
-IF
-    priority >= HIGH
-OR
-    uncertainty >= HIGH
-OR
-    blindness >= HIGH
-       AND
-    fire_likelihood >= MODERATE
-OR
-    exposure >= HIGH
-
-THEN
-    enqueue investigation
-```
-
-Thresholds must be configuration.
+The DynamoDB stream trigger evaluates an event when normalized `score_features`
+are written. It uses versioned thresholds from `config/scoring.v1.json` and
+queues on high priority, high uncertainty with supported fire-likelihood
+evidence, high blindness with moderate likelihood, or high exposure. Missing
+features alone do not qualify an event. Historical candidate rows without
+score features are not auto-enqueued; an analyst can still request an override
+from the event detail view.
 
 ## 4. Agent tools
 
@@ -100,21 +88,24 @@ Produce recommendation
 
 ## 6. Structured output
 
+The deployed contract allows `REVIEW_REQUIRED` or `INSUFFICIENT_EVIDENCE`,
+requires source evidence IDs for every cited finding, and intentionally stores
+no model confidence score. Reports include a concise summary, contradictions,
+missing evidence, and a human-facing recommendation. `HIGH_PRIORITY` and
+`CONFIRMED` are not valid model classifications.
+
 ```json
 {
-  "event_id": "evt_001",
-  "classification": "HIGH_PRIORITY",
-  "confidence": 0.84,
+  "classification": "REVIEW_REQUIRED",
   "evidence": [
     {
-      "type": "satellite",
-      "source": "GK2A",
-      "summary": "Thermal anomaly observed at 17:20"
+      "evidence_id": "obs_123",
+      "interpretation": "A satellite source record is attached for review."
     }
   ],
   "contradictions": [],
   "missing_evidence": [],
-  "reasoning_summary": "Multiple independent signals support investigation.",
+  "summary": "A source record is available for human review.",
   "recommended_action": "HUMAN_VERIFICATION"
 }
 ```
@@ -209,7 +200,7 @@ Agent unavailable
      ↓
 Event remains visible
      ↓
-Deterministic scores remain available
+The historical candidate event remains visible
      ↓
 Status = REVIEW_REQUIRED
 ```
@@ -249,7 +240,20 @@ The agent may read evidence but must not:
 - execute arbitrary shell commands
 - make emergency notifications autonomously
 
-## 14. Investigation lifecycle
+## 14. Deployed implementation
+
+- Strands Agents SDK with Amazon Bedrock DeepSeek V3.2 (`deepseek.v3.2`).
+- A qualifying score update or analyst override is persisted in DynamoDB and
+  dispatched through an encrypted FIFO SQS queue with a dead-letter queue.
+- The worker has a 120-second timeout, 900-token model output cap, and reserved
+  concurrency of two. Latency has not been benchmarked.
+- Read-only tools are scoped to the requested event. Report evidence IDs are
+  checked against evidence returned during that invocation.
+- `tests/unit/test_agent.py` covers request scoping and evidence citation
+  validation. Broader scenario evaluation remains pending because several
+  evidence sources are not present in the replay.
+
+## 15. Investigation lifecycle
 
 ```text
 TRIGGERED

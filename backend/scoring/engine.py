@@ -176,7 +176,14 @@ def investigation_trigger(result: ScoreResult, config: ScoreConfig, exposure_sco
     reasons: list[str] = []
     if result.priority_score is not None and result.priority_score >= thresholds["priority_high"]:
         reasons.append("HIGH_PRIORITY")
-    if result.uncertainty >= thresholds["uncertainty_high"]:
+    # Missing all fire-likelihood inputs describes an unassessed candidate,
+    # not a qualifying uncertain event. Requiring at least one supported
+    # likelihood estimate prevents empty feature records from queuing every
+    # historical candidate.
+    if (
+        result.uncertainty >= thresholds["uncertainty_high"]
+        and result.fire_likelihood_score is not None
+    ):
         reasons.append("HIGH_UNCERTAINTY")
     if (
         result.blindness_score is not None

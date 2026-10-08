@@ -29,6 +29,8 @@ agent:
   enabled: true
   trigger_priority: 0.75
   trigger_uncertainty: 0.70
+  trigger_fire_likelihood_moderate: 0.50
+  score_config: config/scoring.v1.json
 
 grid:
   version: v1
@@ -38,7 +40,11 @@ data:
   timezone: Asia/Kolkata
 ```
 
-These values are placeholders until validated.
+The normalized feature/trigger values in `config/scoring.v1.json` are the
+versioned runtime policy. The YAML above is illustrative only. The automatic
+trigger evaluates a DynamoDB event after a deterministic producer writes a
+`score_features` map using `ScoreFeatures` field names and normalized values in
+`[0, 1]`. Missing features alone do not queue an investigation.
 
 The active versioned baseline is `config/scoring.v1.json`. Its weights are
 only a transparent heuristic configuration; do not describe the scores as
@@ -53,10 +59,12 @@ Example:
 AWS_REGION
 S3_BUCKET
 EVENT_TABLE
+EVIDENCE_TABLE
 INVESTIGATION_TABLE
+BEDROCK_MODEL_ID
+INVESTIGATION_QUEUE_URL
 PROCESSING_QUEUE_URL
 INVESTIGATION_QUEUE_URL
-MODEL_ENDPOINT
 LOG_LEVEL
 ENVIRONMENT
 ```

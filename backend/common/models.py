@@ -318,7 +318,7 @@ class Investigation:
     started_at_utc: datetime
     completed_at_utc: datetime | None
     classification: Classification
-    confidence: float
+    confidence: float | None
     evidence: tuple[EvidenceReference, ...] = field(default_factory=tuple)
     contradictions: tuple[str, ...] = field(default_factory=tuple)
     missing_evidence: tuple[str, ...] = field(default_factory=tuple)
@@ -334,7 +334,8 @@ class Investigation:
             if completed < self.started_at_utc:
                 raise ContractError("completed_at_utc cannot precede started_at_utc")
             object.__setattr__(self, "completed_at_utc", completed)
-        _score(self.confidence, "confidence")
+        if self.confidence is not None:
+            _score(self.confidence, "confidence")
         object.__setattr__(self, "classification", _enum(self.classification, Classification, "classification"))
         object.__setattr__(self, "recommended_action", _enum(self.recommended_action, RecommendedAction, "recommended_action"))
         if not all(isinstance(item, EvidenceReference) for item in self.evidence):

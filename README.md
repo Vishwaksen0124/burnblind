@@ -2,7 +2,7 @@
 
 ## Environmental Monitoring & Incident Investigation Platform
 
-BurnBlind is an environmental intelligence platform that identifies situations where satellite fire monitoring may be incomplete, evaluates multiple independent evidence sources, estimates potential impact, prioritizes events, and invokes an **Investigation Agent** for high-priority or uncertain cases.
+BurnBlind is an environmental intelligence platform for reviewing satellite fire detections, monitoring evidence gaps, and investigating score-qualified candidate events. The current replay labels observations as candidates; it does not claim confirmed fires or calibrated probabilities.
 
 ### Core pipeline
 
@@ -139,12 +139,15 @@ The backend includes canonical data contracts, a metric 5 km grid, a
 version-pinned GK2A historical downloader and normalizer, reproducible
 historical summaries, candidate event grouping, and a read-only replay API.
 The React frontend provides a map-first 2025 replay, source-backed event
-details, investigation status, a six-step system overview, and data/methodology
-pages. It omits unavailable scores and agent conclusions rather than filling
-them with placeholder values. The Investigation Agent is not implemented yet. A SAM template defines the HTTP API, DynamoDB replay index,
-and private encrypted S3 bucket. Scorer weights remain unvalidated
-placeholders. The ERA5 wind adapter and geodesic screening corridor exist;
-population exposure and the investigation agent remain unimplemented.
+details, investigation status and findings, a six-step system overview, and
+data/methodology pages. The AWS SAM stack includes the replay API, encrypted
+DynamoDB event/evidence/investigation tables, a DynamoDB Streams score
+qualification worker, and an SQS/Strands investigator using Amazon Bedrock
+DeepSeek V3.2. Normalized `score_features` activate the versioned trigger rules;
+the current replay seed does not derive these features, so its events are not
+automatically queued. Analysts can request an investigation from event detail.
+Scores remain heuristic and uncalibrated, and population exposure is not
+implemented.
 
 ### Local data workflow
 

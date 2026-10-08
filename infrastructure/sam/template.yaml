@@ -1,16 +1,17 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: BurnBlind historical replay API and private evidence storage.
+Description: BurnBlind historical replay API, evidence storage, and on-demand investigation worker.
 
 Globals:
   Function:
     Runtime: python3.12
-    Timeout: 15
-    MemorySize: 256
     Tracing: Active
     Environment:
       Variables:
         EVENT_TABLE: !Ref EventsTable
+        EVIDENCE_TABLE: !Ref EvidenceTable
+        INVESTIGATION_TABLE: !Ref InvestigationsTable
+        INVESTIGATION_QUEUE_URL: !Ref InvestigationQueue
         CORS_ALLOW_ORIGINS: !Join [",", [!Ref DashboardOrigin, !Ref LocalDashboardOrigin]]
 
 Parameters:
@@ -22,12 +23,19 @@ Parameters:
     Type: String
     Default: http://127.0.0.1:5173
     Description: Local Vite origin allowed for development.
+  DeepSeekModelId:
+    Type: String
+    Default: deepseek.v3.2
+    Description: Amazon Bedrock model ID for the investigation worker.
 
 Resources:
   BurnBlindApi:
     Type: AWS::Serverless::HttpApi
     Properties:
       StageName: prod
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 5
+        ThrottlingRateLimit: 2
       CorsConfiguration:
         AllowOrigins: [!Ref DashboardOrigin, !Ref LocalDashboardOrigin]
         AllowHeaders: [Content-Type, X-Correlation-Id]
@@ -38,6 +46,8 @@ Resources:
     Type: AWS::DynamoDB::Table
     Properties:
       BillingMode: PAY_PER_REQUEST
+      StreamSpecification:
+        StreamViewType: NEW_IMAGE
       SSESpecification:
         SSEEnabled: true
       AttributeDefinitions:
@@ -62,6 +72,66 @@ Resources:
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: false
 
+  EvidenceTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+      AttributeDefinitions:
+        - AttributeName: observation_id
+          AttributeType: S
+        - AttributeName: event_id
+          AttributeType: S
+        - AttributeName: observed_at_utc
+          AttributeType: S
+      KeySchema:
+        - AttributeName: observation_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: event-id-observed-at
+          KeySchema:
+            - AttributeName: event_id
+              KeyType: HASH
+            - AttributeName: observed_at_utc
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  InvestigationsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+      AttributeDefinitions:
+        - AttributeName: event_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: event_id
+          KeyType: HASH
+
+  InvestigationDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AWS::StackName}-investigation-dlq.fifo'
+      FifoQueue: true
+      SqsManagedSseEnabled: true
+      MessageRetentionPeriod: 1209600
+
+  InvestigationQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AWS::StackName}-investigation.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      SqsManagedSseEnabled: true
+      VisibilityTimeout: 750
+      MessageRetentionPeriod: 345600
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt InvestigationDeadLetterQueue.Arn
+        maxReceiveCount: 2
+
   ReplayArtifactBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -81,11 +151,17 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub '${AWS::StackName}-event-api'
+      Timeout: 15
+      MemorySize: 256
       CodeUri: ../../
       Handler: backend.api.handler.lambda_handler
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref EventsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref InvestigationsTable
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt InvestigationQueue.QueueName
       Events:
         ApiProxy:
           Type: HttpApi
@@ -102,10 +178,96 @@ Resources:
     Metadata:
       BuildMethod: makefile
 
+  InvestigationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-investigator'
+      Timeout: 120
+      MemorySize: 512
+      CodeUri: ../../
+      Handler: backend.agent.worker.lambda_handler
+      Environment:
+        Variables:
+          BEDROCK_MODEL_ID: !Ref DeepSeekModelId
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref EventsTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref EvidenceTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref InvestigationsTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource: !Sub 'arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/${DeepSeekModelId}'
+      Events:
+        InvestigationMessages:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt InvestigationQueue.Arn
+            BatchSize: 1
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+            ScalingConfig:
+              MaximumConcurrency: 2
+    Metadata:
+      BuildMethod: makefile
+
+  ScoringTriggerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-scoring-trigger'
+      Timeout: 30
+      MemorySize: 256
+      CodeUri: ../../
+      Handler: backend.scoring.stream_trigger.lambda_handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EventsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref InvestigationsTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:DescribeStream
+                - dynamodb:GetRecords
+                - dynamodb:GetShardIterator
+              Resource: !GetAtt EventsTable.StreamArn
+            - Effect: Allow
+              Action: dynamodb:ListStreams
+              Resource: '*'
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt InvestigationQueue.QueueName
+      Events:
+        ScoredCandidateChanges:
+          Type: DynamoDB
+          Properties:
+            Stream: !GetAtt EventsTable.StreamArn
+            StartingPosition: LATEST
+            BatchSize: 10
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+    Metadata:
+      BuildMethod: makefile
+
   EventApiLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-event-api'
+      RetentionInDays: 14
+
+  InvestigationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-investigator'
+      RetentionInDays: 14
+
+  ScoringTriggerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-scoring-trigger'
       RetentionInDays: 14
 
 Outputs:
@@ -114,5 +276,13 @@ Outputs:
     Value: !Sub 'https://${BurnBlindApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/prod'
   EventsTableName:
     Value: !Ref EventsTable
+  EvidenceTableName:
+    Value: !Ref EvidenceTable
+  InvestigationsTableName:
+    Value: !Ref InvestigationsTable
+  InvestigationQueueUrl:
+    Value: !Ref InvestigationQueue
   ReplayArtifactBucketName:
     Value: !Ref ReplayArtifactBucket
+  DeepSeekModelId:
+    Value: !Ref DeepSeekModelId

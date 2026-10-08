@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from backend.api.dynamodb_repository import DynamoCandidateEventRepository
 from backend.api.repository import EventFilters
@@ -88,3 +89,26 @@ def test_dynamo_repository_reads_event_detail():
     repository = DynamoCandidateEventRepository("Events", table=FakeTable([item]))
 
     assert repository.get(event.event_id) == event
+
+
+def test_dynamo_repository_returns_heuristic_score_context():
+    event, item = make_event("evt_000000000000000000000001", 1)
+    item.update({
+        "score_version": "score-v1",
+        "feature_version": "features-v1",
+        "blindness_score": Decimal("0.7"),
+        "fire_likelihood_score": Decimal("0.8"),
+        "uncertainty": Decimal("0.3"),
+        "priority_score": Decimal("0.6"),
+        "investigation_qualifies": True,
+        "investigation_status": "QUEUED",
+        "investigation_trigger_reasons": ["HIGH_PRIORITY"],
+    })
+    repository = DynamoCandidateEventRepository("Events", table=FakeTable([item]))
+
+    context = repository.get_scoring_context(event.event_id)
+
+    assert context["fire_likelihood_score"] == 0.8
+    assert context["priority_score"] == 0.6
+    assert context["investigation_status"] == "QUEUED"
+    assert context["investigation_trigger_reasons"] == ["HIGH_PRIORITY"]

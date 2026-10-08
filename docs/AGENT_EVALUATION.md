@@ -4,20 +4,39 @@
 
 Determine whether the Investigation Agent is grounded, useful, and reliable enough for the hackathon demo.
 
+## Implemented runtime
+
+- Model: Amazon Bedrock `deepseek.v3.2` through Strands Agents; region comes from
+  the Lambda region (`us-east-2` in the current deployment).
+- Trigger: DynamoDB stream qualification against normalized score features and
+  versioned `config/scoring.v1.json` thresholds, plus an analyst override.
+  Candidate rows with no score features do not auto-queue.
+- Tools: event summary, attached satellite records, historical context,
+  Open-Meteo ERA5 wind, exposure availability, and attached source comparison.
+- Guardrails: tools are read-only and scoped to the requested event; report
+  evidence IDs must exactly match records returned by tools; confidence is
+  null; conclusions remain advisory for human review.
+- Runtime limits: output capped at 900 tokens and Lambda reserved concurrency
+  capped at two. Latency has not been benchmarked.
+
+The high-uncertainty rule requires supported fire-likelihood evidence; missing
+features by themselves do not enqueue an event. A feature fingerprint prevents
+repeat score updates from queueing duplicate runs.
+
+The current deterministic checks live in `tests/unit/test_agent.py` and cover
+event scoping, source attribution, and rejection of unsupported evidence IDs.
+
 ## Evaluation dataset
 
 Create fixed fixtures for:
 
-1. strong multi-sensor evidence
-2. weak evidence
-3. sensor disagreement
-4. high exposure
-5. low exposure
-6. missing weather
-7. missing satellite source
-8. contradictory historical evidence
-9. false-positive-like event
-10. high uncertainty
+The replay seed creates GK2A candidate clusters and attached satellite records
+but does not create normalized `score_features`. Those seeded rows remain
+unqualified unless an upstream deterministic feature producer adds them.
+Multi-sensor confirmation, exposure data, and historical context are not
+attached to these events and are returned as unavailable.
+Expand fixed evaluation fixtures when those sources become available; do not
+describe unsupported cases as tested.
 
 ## Expected behavior
 

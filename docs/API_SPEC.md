@@ -69,20 +69,35 @@ Returns latest investigation if available.
 
 ## POST /events/{event_id}/investigate
 
-Returns `409 INVESTIGATION_NOT_READY` while score inputs and trigger policy
-are unavailable. No investigation job is queued in the current replay API.
-
-Response:
+Explicitly requests an analyst override investigation for an existing
+candidate. It returns `202` with the queue status. A completed investigation
+is deduplicated for that event; failed work can be retried. Qualifying score
+updates are also queued automatically by the DynamoDB stream trigger.
 
 ```json
 {
-  "error": {
-    "code": "INVESTIGATION_NOT_READY",
-    "message": "Investigation can be queued after deterministic scores and trigger policy are available."
-  },
+  "event_id": "evt_...",
+  "status": "QUEUED",
+  "already_requested": false,
   "correlation_id": "..."
 }
 ```
+
+`GET /events/{event_id}/investigation` returns `NOT_REQUESTED`, `QUEUED`,
+`RUNNING`, `COMPLETED`, or `FAILED`. Completed reports include citations to
+source observation IDs; model confidence is intentionally null. Investigations
+are advisory and require human review.
+
+## Automatic qualification
+
+When an event record receives normalized `score_features`, the stream worker
+applies `config/scoring.v1.json`. It queues investigations for high priority,
+high uncertainty with at least one supported fire-likelihood feature, high
+blindness with moderate fire likelihood, or high exposure. A record with no
+usable evidence does not qualify from missingness alone. The worker stores the
+score snapshot, policy version, and trigger reasons with the investigation.
+The feature producer is responsible for writing validated feature inputs;
+candidate rows without them remain unassessed and are not auto-enqueued.
 
 ## Error format
 

@@ -88,7 +88,7 @@ def _parse_filters(query: Mapping[str, str]) -> tuple[EventFilters, int, str | N
     return filters, limit, query.get("cursor")
 
 
-def _event_payload(event) -> dict[str, Any]:
+def _event_payload(event, assessment: Mapping[str, Any] | None = None) -> dict[str, Any]:
     payload = candidate_event_to_dict(event)
     payload.update(
         {
@@ -101,6 +101,20 @@ def _event_payload(event) -> dict[str, Any]:
             "score_status": "AWAITING_REQUIRED_FEATURES",
         }
     )
+    if assessment:
+        payload.update(
+            {
+                "blindness_score": assessment.get("blindness_score"),
+                "fire_likelihood": assessment.get("fire_likelihood_score"),
+                "uncertainty": assessment.get("uncertainty"),
+                "priority_score": assessment.get("priority_score"),
+                "score_status": "HEURISTIC_SCORES_AVAILABLE",
+                "score_version": assessment.get("score_version"),
+                "feature_version": assessment.get("feature_version"),
+                "investigation_status": assessment.get("investigation_status", "NOT_REQUIRED"),
+                "investigation_trigger_reasons": assessment.get("investigation_trigger_reasons", []),
+            }
+        )
     return payload
 
 
@@ -116,6 +130,8 @@ def handle_request(
     request_id: str | None = None,
     body: str | None = None,
     origin: str | None = None,
+    investigation_store: Any | None = None,
+    investigation_launcher: Any | None = None,
 ) -> ApiResponse:
     query = query or {}
     correlation_id = request_id or str(uuid.uuid4())
@@ -181,20 +197,46 @@ def handle_request(
             if event is None:
                 status, response = _error(404, "EVENT_NOT_FOUND", "Event does not exist.")
             elif len(parts) == 3 and method == "GET":
-                status, response = 200, _event_payload(event)
+                get_assessment = getattr(repository, "get_scoring_context", None)
+                assessment = get_assessment(event.event_id) if get_assessment else None
+                status, response = 200, _event_payload(event, assessment)
             elif len(parts) == 4 and parts[3] == "investigation" and method == "GET":
-                status, response = 200, {
-                    "event_id": event.event_id,
-                    "status": "NOT_AVAILABLE",
-                    "investigation": None,
-                    "reason": "This historical candidate has not passed the investigation trigger policy.",
-                }
+                record = investigation_store.get(event.event_id) if investigation_store else None
+                if record:
+                    status, response = 200, {
+                        "event_id": event.event_id,
+                        "status": record.get("status", "UNKNOWN"),
+                        "investigation": record.get("report"),
+                        "requested_at_utc": record.get("requested_at_utc"),
+                        "started_at_utc": record.get("started_at_utc"),
+                        "completed_at_utc": record.get("completed_at_utc"),
+                        "error_code": record.get("error_code"),
+                        "trigger_reasons": record.get("trigger_reasons", []),
+                    }
+                else:
+                    status, response = 200, {
+                        "event_id": event.event_id,
+                        "status": "NOT_REQUESTED",
+                        "investigation": None,
+                        "reason": "No investigation has been requested for this historical candidate.",
+                    }
             elif len(parts) == 4 and parts[3] == "investigate" and method == "POST":
-                status, response = _error(
-                    409,
-                    "INVESTIGATION_NOT_READY",
-                    "Investigation can be queued after deterministic scores and trigger policy are available.",
-                )
+                if investigation_launcher is None:
+                    status, response = _error(
+                        409,
+                        "INVESTIGATION_NOT_READY",
+                        "Investigation queue is not configured for this API instance.",
+                    )
+                else:
+                    try:
+                        record, created = investigation_launcher.enqueue(event, correlation_id)
+                        status, response = 202, {
+                            "event_id": event.event_id,
+                            "status": record.get("status", "QUEUED"),
+                            "already_requested": not created,
+                        }
+                    except Exception:
+                        status, response = _error(503, "INVESTIGATION_QUEUE_UNAVAILABLE", "The investigation request could not be queued. Try again later.")
             else:
                 status, response = _error(405, "METHOD_NOT_ALLOWED", "Method is not allowed for this resource.")
     else:
@@ -224,7 +266,11 @@ def lambda_handler(event: Mapping[str, Any], context: Any) -> dict[str, Any]:
     request_id = request_context.get("requestId")
     headers = event.get("headers") or {}
     origin = headers.get("origin") or headers.get("Origin")
-    response = handle_request(method, path, query, repository, request_id, event.get("body"), origin)
+    investigation_store, investigation_launcher = _investigation_services_from_environment()
+    response = handle_request(
+        method, path, query, repository, request_id, event.get("body"), origin,
+        investigation_store, investigation_launcher,
+    )
     return response.gateway_response()
 
 
@@ -235,3 +281,17 @@ def _dynamo_repository_from_environment() -> CandidateEventRepository:
     from backend.api.dynamodb_repository import DynamoCandidateEventRepository
 
     return DynamoCandidateEventRepository(table_name)
+
+
+def _investigation_services_from_environment():
+    table_name = os.environ.get("INVESTIGATION_TABLE")
+    queue_url = os.environ.get("INVESTIGATION_QUEUE_URL")
+    if not table_name or not queue_url:
+        return None, None
+    import boto3
+
+    from backend.agent.storage import DynamoInvestigationStore, SqsInvestigationLauncher
+
+    store = DynamoInvestigationStore(boto3.resource("dynamodb").Table(table_name))
+    launcher = SqsInvestigationLauncher(store, queue_url, boto3.client("sqs"))
+    return store, launcher

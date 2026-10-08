@@ -99,6 +99,20 @@ Never use:
 
 All weights and thresholds live in `docs/CONFIGURATION.md` / versioned config.
 
+## 9. Investigation qualification
+
+`backend/scoring/stream_trigger.py` evaluates an event when a deterministic
+producer writes a `score_features` map to the Events table. The map uses the
+`ScoreFeatures` field names above and normalized `[0, 1]` numeric values. The
+stream stores the score version, completeness, trigger reasons, and a
+fingerprint to prevent duplicate evaluation of unchanged inputs.
+
+High priority, high uncertainty, high blindness with moderate fire likelihood,
+or high exposure qualifies under `config/scoring.v1.json`. High uncertainty
+requires a supported fire-likelihood score so an empty feature map does not
+queue every candidate. Seeded replay candidates currently have no
+`score_features`, so they remain visible without an automatic investigation.
+
 Every event stores the scoring version.
 
 ## Current deterministic baseline

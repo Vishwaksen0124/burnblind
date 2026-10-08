@@ -78,6 +78,38 @@ def test_event_detail_and_investigation_are_grounded_in_available_state():
     assert queue.body["error"]["code"] == "INVESTIGATION_NOT_READY"
 
 
+def test_investigation_queue_returns_accepted_and_current_status():
+    class Launcher:
+        def enqueue(self, candidate, request_id):
+            assert candidate.event_id == "evt_000000000000000000000001"
+            assert request_id == "request-456"
+            return {"status": "QUEUED"}, True
+
+    class Store:
+        def get(self, event_id):
+            return {
+                "status": "COMPLETED",
+                "report": {"classification": "REVIEW_REQUIRED"},
+                "requested_at_utc": "2025-10-01T07:00:00Z",
+                "completed_at_utc": "2025-10-01T07:00:03Z",
+            }
+
+    event_id = "evt_000000000000000000000001"
+    queued = handle_request(
+        "POST", f"/events/{event_id}/investigate", {}, repository(), "request-456",
+        investigation_launcher=Launcher(),
+    )
+    current = handle_request(
+        "GET", f"/events/{event_id}/investigation", {}, repository(),
+        investigation_store=Store(),
+    )
+
+    assert queued.status_code == 202
+    assert queued.body["status"] == "QUEUED"
+    assert current.body["status"] == "COMPLETED"
+    assert current.body["investigation"]["classification"] == "REVIEW_REQUIRED"
+
+
 def test_unknown_events_and_malformed_ids_return_structured_errors():
     missing = handle_request("GET", "/api/events/evt_000000000000000000000099", {}, repository())
     malformed = handle_request("GET", "/api/events/not-an-id", {}, repository())

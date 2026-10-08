@@ -6,6 +6,7 @@ __pycache__/
 /frontend/dist/
 /frontend/.vite/
 /.aws-sam/
+*.egg-info/
 samconfig.toml
 .env
 .env.*
