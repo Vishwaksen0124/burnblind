@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Least-privilege GitHub Actions OIDC role for BurnBlind Amplify deployments.
+
+Parameters:
+  GitHubOwner:
+    Type: String
+    Description: GitHub user or organization that owns the source repository.
+  GitHubRepository:
+    Type: String
+    Description: Exact GitHub repository name, without owner or .git suffix.
+  AmplifyAppId:
+    Type: String
+    Default: d3k8g1d6au7814
+  AmplifyBranch:
+    Type: String
+    Default: main
+
+Resources:
+  GitHubActionsOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+
+  GitHubActionsAmplifyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Allows only the configured GitHub main branch to publish BurnBlind's Amplify frontend.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Ref GitHubActionsOidcProvider
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub 'repo:${GitHubOwner}/${GitHubRepository}:ref:refs/heads/${AmplifyBranch}'
+      Policies:
+        - PolicyName: PublishBurnBlindAmplifyMain
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ReadAmplifyApp
+                Effect: Allow
+                Action: amplify:GetApp
+                Resource: !Sub 'arn:${AWS::Partition}:amplify:${AWS::Region}:${AWS::AccountId}:apps/${AmplifyAppId}'
+              - Sid: PublishOnlyConfiguredBranch
+                Effect: Allow
+                Action:
+                  - amplify:CreateDeployment
+                  - amplify:StartDeployment
+                Resource: !Sub 'arn:${AWS::Partition}:amplify:${AWS::Region}:${AWS::AccountId}:apps/${AmplifyAppId}/branches/${AmplifyBranch}'
+              - Sid: InspectOnlyConfiguredBranchJobs
+                Effect: Allow
+                Action: amplify:GetJob
+                Resource: !Sub 'arn:${AWS::Partition}:amplify:${AWS::Region}:${AWS::AccountId}:apps/${AmplifyAppId}/branches/${AmplifyBranch}/jobs/*'
+
+Outputs:
+  GitHubActionsRoleArn:
+    Value: !GetAtt GitHubActionsAmplifyRole.Arn
+  GitHubOidcProviderArn:
+    Value: !Ref GitHubActionsOidcProvider

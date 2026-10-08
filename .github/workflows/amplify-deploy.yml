@@ -1,0 +1,56 @@
+name: Dashboard CI/CD
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: us-east-2
+      AMPLIFY_APP_ID: d3k8g1d6au7814
+      VITE_API_BASE_URL: https://ad4m8eny2m.execute-api.us-east-2.amazonaws.com/prod/api
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Check dependency advisories
+        working-directory: frontend
+        run: npm audit --audit-level=moderate
+
+      - name: Build dashboard
+        working-directory: frontend
+        run: npm run build
+
+      - name: Configure AWS credentials with GitHub OIDC
+        if: github.event_name == 'push'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Publish Amplify deployment
+        if: github.event_name == 'push'
+        run: python scripts/deploy_amplify_manual.py --app-id "$AMPLIFY_APP_ID" --branch main

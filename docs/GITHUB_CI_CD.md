@@ -24,10 +24,11 @@ This avoids granting Amplify a long-lived GitHub token.
 3. Push the workflow to `main`. Pull requests build without deploying; merges
    and direct pushes to `main` publish the Amplify site.
 
+Repository: <https://github.com/Vishwaksen0124/burnblind>  
 Amplify app: `d3k8g1d6au7814`  
 Amplify branch: `main`  
 Site: <https://main.d3k8g1d6au7814.amplifyapp.com>
 
-The AWS role template is ready, but cannot be instantiated until the GitHub
-repository name is known. This workspace currently has no Git remote or
-commits, and the authenticated GitHub account has no existing BurnBlind repo.
+The GitHub Actions workflow and least-privilege role template are included in
+this repository. The role and repository variable must be configured in AWS
+and GitHub before pushes can deploy.

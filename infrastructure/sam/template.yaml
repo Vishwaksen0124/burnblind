@@ -1,0 +1,118 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: BurnBlind historical replay API and private evidence storage.
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 15
+    MemorySize: 256
+    Tracing: Active
+    Environment:
+      Variables:
+        EVENT_TABLE: !Ref EventsTable
+        CORS_ALLOW_ORIGINS: !Join [",", [!Ref DashboardOrigin, !Ref LocalDashboardOrigin]]
+
+Parameters:
+  DashboardOrigin:
+    Type: String
+    Default: https://main.d3k8g1d6au7814.amplifyapp.com
+    Description: Amplify dashboard origin, without a trailing slash.
+  LocalDashboardOrigin:
+    Type: String
+    Default: http://127.0.0.1:5173
+    Description: Local Vite origin allowed for development.
+
+Resources:
+  BurnBlindApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: prod
+      CorsConfiguration:
+        AllowOrigins: [!Ref DashboardOrigin, !Ref LocalDashboardOrigin]
+        AllowHeaders: [Content-Type, X-Correlation-Id]
+        AllowMethods: [GET, POST, OPTIONS]
+        MaxAge: 600
+
+  EventsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+      AttributeDefinitions:
+        - AttributeName: event_id
+          AttributeType: S
+        - AttributeName: data_mode
+          AttributeType: S
+        - AttributeName: detected_at_utc
+          AttributeType: S
+      KeySchema:
+        - AttributeName: event_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: data-mode-detected-at
+          KeySchema:
+            - AttributeName: data_mode
+              KeyType: HASH
+            - AttributeName: detected_at_utc
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: false
+
+  ReplayArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Suspended
+
+  EventApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-event-api'
+      CodeUri: ../../
+      Handler: backend.api.handler.lambda_handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref EventsTable
+      Events:
+        ApiProxy:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BurnBlindApi
+            Path: /{proxy+}
+            Method: ANY
+        ApiRoot:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BurnBlindApi
+            Path: /
+            Method: ANY
+    Metadata:
+      BuildMethod: makefile
+
+  EventApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-event-api'
+      RetentionInDays: 14
+
+Outputs:
+  ApiBaseUrl:
+    Description: HTTP API base URL
+    Value: !Sub 'https://${BurnBlindApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/prod'
+  EventsTableName:
+    Value: !Ref EventsTable
+  ReplayArtifactBucketName:
+    Value: !Ref ReplayArtifactBucket
