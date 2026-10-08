@@ -83,7 +83,7 @@ export function InvestigationsPage() {
       {items.map((item) => <article className="investigation-card panel" key={item.event_id}>
         <header><div><p className="eyebrow">EVENT · {item.event_id}</p><h2>{item.investigation?.classification?.replaceAll('_', ' ') || item.status?.replaceAll('_', ' ')}</h2></div><span className={`investigation-status status-${item.status?.toLowerCase()}`}>{item.status?.replaceAll('_', ' ')}</span></header>
         {item.investigation?.summary && <p className="investigation-card-summary">{item.investigation.summary}</p>}
-        {item.investigation?.evidence?.length > 0 && <p className="investigation-card-meta">{item.investigation.evidence.length} cited evidence {item.investigation.evidence.length === 1 ? 'record' : 'records'} · {item.investigation.recommended_action?.replaceAll('_', ' ')}</p>}
+        {item.investigation?.evidence?.length > 0 && <p className="investigation-card-meta">{item.investigation.evidence.length} cited evidence {item.investigation.evidence.length === 1 ? 'record' : 'records'} · {(item.investigation.recommendations || (item.investigation.recommended_action ? [item.investigation.recommended_action] : [])).map((action) => action.replaceAll('_', ' ')).join(' · ')}</p>}
         {item.error_code && <p className="report-error">Review failed · {item.error_code}</p>}
         <footer><span>Requested {formatDate(item.requested_at_utc)}</span>{item.completed_at_utc && <span>Completed {formatDate(item.completed_at_utc)}</span>}<span>{item.model_id || 'Model metadata unavailable'}</span></footer>
       </article>)}
