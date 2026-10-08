@@ -29,10 +29,19 @@ Parameters:
     Description: Amazon Bedrock model ID for the investigation worker.
 
 Resources:
+  ApiAccessLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/apigateway/${AWS::StackName}-access'
+      RetentionInDays: 14
+
   BurnBlindApi:
     Type: AWS::Serverless::HttpApi
     Properties:
       StageName: prod
+      AccessLogSettings:
+        DestinationArn: !GetAtt ApiAccessLogs.Arn
+        Format: '{"requestId":"$context.requestId","routeKey":"$context.routeKey","status":"$context.status","integrationStatus":"$context.integrationStatus","integrationError":"$context.integrationErrorMessage","responseLength":"$context.responseLength"}'
       DefaultRouteSettings:
         ThrottlingBurstLimit: 5
         ThrottlingRateLimit: 2
