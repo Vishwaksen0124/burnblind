@@ -5,9 +5,15 @@ Parameters:
   GitHubOwner:
     Type: String
     Description: GitHub user or organization that owns the source repository.
+  GitHubOwnerId:
+    Type: String
+    Description: Immutable numeric GitHub user or organization ID used in OIDC subject claims.
   GitHubRepository:
     Type: String
     Description: Exact GitHub repository name, without owner or .git suffix.
+  GitHubRepositoryId:
+    Type: String
+    Description: Immutable numeric GitHub repository ID used in OIDC subject claims.
   AmplifyAppId:
     Type: String
     Default: d3k8g1d6au7814
@@ -26,7 +32,7 @@ Resources:
   GitHubActionsAmplifyRole:
     Type: AWS::IAM::Role
     Properties:
-      Description: Allows only the configured GitHub main branch to publish BurnBlind's Amplify frontend.
+      Description: Allows only the configured GitHub repository and branch to publish BurnBlind's Amplify frontend.
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -37,7 +43,7 @@ Resources:
             Condition:
               StringEquals:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
-                token.actions.githubusercontent.com:sub: !Sub 'repo:${GitHubOwner}/${GitHubRepository}:ref:refs/heads/${AmplifyBranch}'
+                token.actions.githubusercontent.com:sub: !Sub 'repo:${GitHubOwner}@${GitHubOwnerId}/${GitHubRepository}@${GitHubRepositoryId}:ref:refs/heads/${AmplifyBranch}'
       Policies:
         - PolicyName: PublishBurnBlindAmplifyMain
           PolicyDocument:

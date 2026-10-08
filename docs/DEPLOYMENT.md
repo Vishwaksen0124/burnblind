@@ -51,7 +51,17 @@ The investigator uses Strands Agents with Amazon Bedrock DeepSeek V3.2
 foundation model, and reserved concurrency is two. The stack has no scheduled
 agent trigger. The DynamoDB stream qualification worker runs only when score
 features are attached; the current replay seeder does not derive those
-features. Model access must be enabled for the AWS account and region.
+features. DeepSeek remains the configured model, but account authorization is
+currently `NOT_AUTHORIZED`; Bedrock returns `Operation not allowed`. Verify
+Bedrock model access, Marketplace permissions, and a valid payment method
+before expecting investigation jobs to complete. The worker role includes the
+documented Marketplace subscription actions.
+
+The Amplify publish workflow assumes the role provisioned by
+`infrastructure/sam/github-actions-role.yaml`. GitHub OIDC subjects include
+immutable owner and repository IDs, so pass both the owner/repository names
+and IDs when creating that stack. For this repository those IDs are
+`169535794` and `1409821450`.
 
 ## 4. Deployment checklist
 
