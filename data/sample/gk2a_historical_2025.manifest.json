@@ -1,0 +1,24 @@
+{
+  "dataset": "BurnBlind GK2A historical development sample",
+  "sample_type": "real source records; development/debug only; not a statistical sample",
+  "sample_method": "evenly spaced source-row indices per 2025 region file",
+  "source_record_id": "20084790",
+  "source_doi": "10.5281/zenodo.20084790",
+  "source_version": "v1",
+  "license": "CC BY 4.0",
+  "generated_at_utc": "2026-10-08T04:30:37.383448Z",
+  "record_count": 250,
+  "source_files": [
+    {
+      "file_name": "GK2-AMI_FireHotspotsData_2025_10-11_Haryana_India_v1.txt",
+      "checksum": "md5:be4c190627dd62cfe44feaee99f57c07",
+      "selected_records": 125
+    },
+    {
+      "file_name": "GK2-AMI_FireHotspotsData_2025_10-11_Punjab_India_v1.txt",
+      "checksum": "md5:7b0993173bf0ca5260ad9ede2fee672b",
+      "selected_records": 125
+    }
+  ],
+  "data_file": "gk2a_historical_2025.jsonl"
+}
