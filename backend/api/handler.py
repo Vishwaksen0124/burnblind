@@ -122,6 +122,32 @@ def _error(status: int, code: str, message: str) -> tuple[int, dict[str, Any]]:
     return status, {"error": {"code": code, "message": message}}
 
 
+def _investigation_payload(event_id: str, record: Mapping[str, Any]) -> dict[str, Any]:
+    """Keep event identity and execution metadata outside the evidence report.
+
+    The fallback reads legacy fields out of previously stored report objects so
+    old completions follow the same API contract as new ones.
+    """
+    report = dict(record.get("report") or {})
+    metadata = {}
+    for field in ("event_id", "model_id", "agent_version", "prompt_version", "started_at_utc", "completed_at_utc", "confidence"):
+        metadata[field] = record.get(field) or report.pop(field, None)
+    return {
+        "event_id": event_id,
+        "status": record.get("status", "UNKNOWN"),
+        "investigation": report or None,
+        "requested_at_utc": record.get("requested_at_utc"),
+        "started_at_utc": metadata["started_at_utc"],
+        "completed_at_utc": metadata["completed_at_utc"],
+        "updated_at_utc": record.get("updated_at_utc") or metadata["completed_at_utc"] or record.get("requested_at_utc"),
+        "model_id": metadata["model_id"],
+        "agent_version": metadata["agent_version"],
+        "prompt_version": metadata["prompt_version"],
+        "error_code": record.get("error_code"),
+        "trigger_reasons": record.get("trigger_reasons", []),
+    }
+
+
 def handle_request(
     method: str,
     path: str,
@@ -198,23 +224,7 @@ def handle_request(
                     raise ValueError
                 records, next_cursor = investigation_store.list(limit, query.get("cursor"))
                 status, response = 200, {
-                    "items": [
-                        {
-                            "event_id": item.get("event_id"),
-                            "status": item.get("status", "UNKNOWN"),
-                            "investigation": item.get("report"),
-                            "requested_at_utc": item.get("requested_at_utc"),
-                            "started_at_utc": item.get("started_at_utc"),
-                            "completed_at_utc": item.get("completed_at_utc"),
-                            "updated_at_utc": item.get("updated_at_utc"),
-                            "model_id": item.get("model_id"),
-                            "agent_version": item.get("agent_version"),
-                            "prompt_version": item.get("prompt_version"),
-                            "error_code": item.get("error_code"),
-                            "trigger_reasons": item.get("trigger_reasons", []),
-                        }
-                        for item in records
-                    ],
+                    "items": [_investigation_payload(str(item.get("event_id", "")), item) for item in records],
                     "next_cursor": next_cursor,
                 }
             except (TypeError, ValueError):
@@ -234,20 +244,7 @@ def handle_request(
             elif len(parts) == 4 and parts[3] == "investigation" and method == "GET":
                 record = investigation_store.get(event.event_id) if investigation_store else None
                 if record:
-                    status, response = 200, {
-                        "event_id": event.event_id,
-                        "status": record.get("status", "UNKNOWN"),
-                        "investigation": record.get("report"),
-                        "requested_at_utc": record.get("requested_at_utc"),
-                        "started_at_utc": record.get("started_at_utc"),
-                        "completed_at_utc": record.get("completed_at_utc"),
-                        "updated_at_utc": record.get("updated_at_utc"),
-                        "model_id": record.get("model_id"),
-                        "agent_version": record.get("agent_version"),
-                        "prompt_version": record.get("prompt_version"),
-                        "error_code": record.get("error_code"),
-                        "trigger_reasons": record.get("trigger_reasons", []),
-                    }
+                    status, response = 200, _investigation_payload(event.event_id, record)
                 else:
                     status, response = 200, {
                         "event_id": event.event_id,
