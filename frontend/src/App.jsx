@@ -20,7 +20,7 @@ function App() {
 
   return <div className="app-shell">
     <Header page={page} />
-    <main id="main-content" className="page-content">
+    <div className="app-main"><main id="main-content" className="page-content">
       {page === 'monitoring' && <Dashboard />}
       {page === 'investigations' && <InvestigationsPage />}
       {page === 'how-it-works' && <HowItWorksPage />}
@@ -29,7 +29,7 @@ function App() {
     <footer className="site-footer">
       <span>BURNBLIND <i>·</i> ENVIRONMENTAL INTELLIGENCE</span>
       <span>Replay detections are not confirmed incidents. <a href="https://www.openstreetmap.org/copyright">Map attribution</a></span>
-    </footer>
+    </footer></div>
   </div>;
 }
 

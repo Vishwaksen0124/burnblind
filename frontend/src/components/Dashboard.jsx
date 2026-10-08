@@ -46,11 +46,16 @@ export default function Dashboard() {
   }
 
   return <>
-    <PageHeading eyebrow="ENVIRONMENTAL MONITORING · PUNJAB + HARYANA" title={<>Monitoring <em>overview</em></>} aside={<div className="data-window"><span>DATA WINDOW</span><strong>{summary?.last_updated ? formatTimestamp(summary.last_updated) : 'Historical sample'}</strong></div>}>
-      Explore grouped satellite detections and monitoring coverage gaps across the replay region. Every item is a candidate observation, not a confirmed fire.
+    <PageHeading eyebrow="ENVIRONMENTAL MONITORING · PUNJAB + HARYANA" title={<>Live <em>monitoring</em></>} aside={<div className="data-window"><span>LAST OBSERVATION</span><strong>{summary?.last_updated ? formatTimestamp(summary.last_updated) : 'Historical sample'}</strong></div>}>
+      Potential thermal observations and coverage gaps across the replay region. Each marker is a candidate detection, not a confirmed incident.
     </PageHeading>
 
-    <div className="replay-strip"><span className="replay-icon">↺</span><strong>HISTORICAL REPLAY</strong><span>GK2A · Oct–Nov 2025 source sample</span><span className="strip-separator" />{summary && <span>{summary.candidate_events.toLocaleString()} candidate clusters in dataset</span>}</div>
+    <section className="ops-strip" aria-label="Replay monitoring summary">
+      <div className="ops-stat"><span className="ops-icon">⌖</span><span><small>Candidate events</small><strong>{summary ? summary.candidate_events.toLocaleString() : '—'}</strong></span><em>In replay sample</em></div>
+      <div className="ops-stat"><span className="ops-icon">◉</span><span><small>Observation source</small><strong>GK2A AMI</strong></span><em>Oct–Nov 2025</em></div>
+      <div className="ops-stat ops-caution"><span className="ops-icon">△</span><span><small>Assessment status</small><strong>Not scored</strong></span><em>Required inputs unavailable</em></div>
+      <div className="replay-tag"><i /> HISTORICAL REPLAY</div>
+    </section>
 
     <section className="workspace" aria-label="Monitoring map and candidate event queue">
       <section className="map-panel panel">
@@ -66,7 +71,7 @@ export default function Dashboard() {
               <Tooltip><strong>{eventLabel(event)}</strong><br />{formatTimestamp(event.detected_at_utc)}</Tooltip>
             </CircleMarker>)}
           </MapContainer>
-          <div className="map-overlay"><span>REPLAY · 2025</span><strong>{visibleEvents.length}</strong><small>candidate observations</small></div>
+          <div className="map-overlay"><span>THERMAL OBSERVATIONS · 2025</span><strong>{visibleEvents.length}</strong><small>visible candidates</small></div>
           <div className="map-coordinates" aria-hidden="true">29°N — 33°N<br />74°E — 78°E</div>
         </div>
         <div className="map-foot"><span>GK2A HISTORICAL DETECTIONS</span><span>COORDINATE REFERENCE · WGS84</span></div>
