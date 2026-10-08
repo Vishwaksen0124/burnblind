@@ -19,10 +19,13 @@ ROOT = Path(__file__).resolve().parents[1]
 def aws_json(*arguments: str) -> dict:
     result = subprocess.run(
         ["aws", "amplify", *arguments, "--region", "us-east-2", "--output", "json"],
-        check=True,
+        check=False,
         capture_output=True,
         text=True,
     )
+    if result.returncode:
+        detail = (result.stderr or result.stdout).strip()
+        raise RuntimeError(detail or f"AWS CLI command failed with exit code {result.returncode}")
     return json.loads(result.stdout)
 
 
