@@ -131,7 +131,8 @@ def _investigation_payload(event_id: str, record: Mapping[str, Any]) -> dict[str
     report = dict(record.get("report") or {})
     metadata = {}
     for field in ("event_id", "model_id", "agent_version", "prompt_version", "started_at_utc", "completed_at_utc", "confidence"):
-        metadata[field] = record.get(field) or report.pop(field, None)
+        legacy_value = report.pop(field, None)
+        metadata[field] = record.get(field) or legacy_value
     return {
         "event_id": event_id,
         "status": record.get("status", "UNKNOWN"),
