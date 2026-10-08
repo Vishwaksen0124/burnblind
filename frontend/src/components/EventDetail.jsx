@@ -121,8 +121,8 @@ function InvestigationFindings({ report }) {
   return <div className="findings">
     <div className="finding-summary"><span className="detail-label">{report.classification?.replaceAll('_', ' ')}</span><p>{report.summary}</p></div>
     {report.evidence?.length > 0 && <section><h4>Evidence reviewed</h4><ul>{report.evidence.map((item) => <li key={item.evidence_id}><span>{item.source}</span><p>{item.summary}</p><code>{item.evidence_id}</code></li>)}</ul></section>}
-    {report.contradictions?.length > 0 && <section><h4>Contradictions</h4><ul className="plain-list">{report.contradictions.map((item) => <li key={item}>{item}</li>)}</ul></section>}
+    {report.contradictions?.length > 0 && <section><h4>Contradictions</h4><ul className="plain-list">{report.contradictions.map((item, index) => <li key={item.explanation || item || index}>{typeof item === 'string' ? item : `${item.explanation} [${item.evidence_ids.join(', ')}]`}</li>)}</ul></section>}
     {report.missing_evidence?.length > 0 && <section><h4>Evidence unavailable</h4><ul className="plain-list">{report.missing_evidence.map((item) => <li key={item}>{item}</li>)}</ul></section>}
-    <p className="recommendation"><span>RECOMMENDATION</span><strong>{report.recommended_action?.replaceAll('_', ' ')}</strong><small>Advisory only · a human makes the operational decision.</small></p>
+    <p className="recommendation"><span>RECOMMENDATION</span><strong>{(report.recommendations || (report.recommended_action ? [report.recommended_action] : [])).map((item) => item.replaceAll('_', ' ')).join(' · ')}</strong><small>Advisory only · a human makes the operational decision.</small></p>
   </div>;
 }
