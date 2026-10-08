@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import Dashboard from './components/Dashboard.jsx';
+import ProductPage from './components/ProductPage.jsx';
 import { DataPage, HowItWorksPage, InvestigationsPage } from './components/SupportingPages.jsx';
 import { Header } from './components/shared.jsx';
 
 const pages = {
+  '#home': 'home',
   '#monitoring': 'monitoring',
   '#investigations': 'investigations',
   '#how-it-works': 'how-it-works',
@@ -11,7 +13,7 @@ const pages = {
 };
 
 function App() {
-  const [page, setPage] = useState(pages[window.location.hash] || 'monitoring');
+  const [page, setPage] = useState(pages[window.location.hash] || 'home');
   useEffect(() => {
     const syncPage = () => setPage(pages[window.location.hash] || 'monitoring');
     window.addEventListener('hashchange', syncPage);
@@ -22,6 +24,7 @@ function App() {
     <Header page={page} />
     <div className="app-main"><main id="main-content" className="page-content">
       {page === 'monitoring' && <Dashboard />}
+      {page === 'home' && <ProductPage />}
       {page === 'investigations' && <InvestigationsPage />}
       {page === 'how-it-works' && <HowItWorksPage />}
       {page === 'methodology' && <DataPage />}

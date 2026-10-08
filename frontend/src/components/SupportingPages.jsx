@@ -17,7 +17,7 @@ export function HowItWorksPage() {
   </>;
 }
 
-const SOURCES = [
+export const SOURCES = [
   { name: 'GK2A AMI', url: 'https://zenodo.org/records/20084790', type: 'Historical replay source', provides: 'Thermal hotspot detections used to build the current Punjab and Haryana replay sample.', limit: 'A satellite detection is a candidate observation, not a verified incident. Current UI sample covers Oct–Nov 2025.' },
   { name: 'NASA FIRMS / VIIRS', url: 'https://firms.modaps.eosdis.nasa.gov/active_fire/', type: 'Planned comparison source', provides: 'Independent active-fire observations for cross-sensor comparison.', limit: 'No matched comparison records are currently exposed by the application API.' },
   { name: 'Weather / reanalysis', url: 'https://open-meteo.com/en/docs/historical-weather-api', type: 'Planned environmental source', provides: 'Wind context for estimating a potential downwind screening corridor.', limit: 'Weather evidence is not yet connected to the dashboard API.' },

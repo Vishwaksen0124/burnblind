@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CircleMarker, MapContainer, TileLayer, Tooltip, ZoomControl } from 'react-leaflet';
 import { getEvents, getSummary } from '../api.js';
 import { eventLabel, eventSearchText, formatTimestamp } from '../lib/eventView.js';
 import { Eyebrow, PageHeading, StateMessage } from './shared.jsx';
+import CandidateMap from './CandidateMap.jsx';
 import EventDetail from './EventDetail.jsx';
 
-const REGION_BOUNDS = [[28.75, 73.75], [32.75, 77.85]];
 const FILTERS = [
   { id: 'all', label: 'All candidates' },
   { id: 'repeated', label: 'Repeated detections' },
@@ -64,13 +63,7 @@ export default function Dashboard() {
           <div className="map-legend"><span className="legend-mark" />Candidate detection</div>
         </div>
         <div className="map-wrap">
-          <MapContainer bounds={REGION_BOUNDS} boundsOptions={{ padding: [18, 18] }} minZoom={6} maxZoom={12} scrollWheelZoom className="map" zoomControl={false}>
-            <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            <ZoomControl position="bottomright" />
-            {visibleEvents.map((event) => <CircleMarker key={event.event_id} center={[event.latitude, event.longitude]} radius={event.detection_count > 1 ? 7 : 5} pathOptions={{ color: '#ffc16b', weight: 1.5, fillColor: '#e9753b', fillOpacity: 0.78 }} eventHandlers={{ click: () => openEvent(event) }}>
-              <Tooltip><strong>{eventLabel(event)}</strong><br />{formatTimestamp(event.detected_at_utc)}</Tooltip>
-            </CircleMarker>)}
-          </MapContainer>
+          <CandidateMap events={visibleEvents} onEventSelect={openEvent} />
           <div className="map-overlay"><span>THERMAL OBSERVATIONS · 2025</span><strong>{visibleEvents.length}</strong><small>visible candidates</small></div>
           <div className="map-coordinates" aria-hidden="true">29°N — 33°N<br />74°E — 78°E</div>
         </div>

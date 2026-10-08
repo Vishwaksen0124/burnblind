@@ -1,4 +1,13 @@
 export function Header({ page }) {
+  if (page === 'home') {
+    return <header className="landing-topbar">
+      <a className="brand" href="#home" aria-label="BurnBlind product home"><span className="brand-mark" aria-hidden="true"><span /></span><span className="brand-name">BURN<span>BLIND</span></span></a>
+      <nav className="landing-nav" aria-label="Primary navigation">
+        <a href="#home" aria-current="page">Product</a><a href="#landing-how-it-works">How it works</a><a href="#monitoring">Monitoring</a><a href="#investigations">Investigations</a><a href="#landing-methodology">Documentation</a>
+      </nav>
+      <a className="landing-nav-cta" href="#monitoring">Explore monitoring <span aria-hidden="true">→</span></a>
+    </header>;
+  }
   const links = [
     ['monitoring', '#monitoring', 'Monitoring', '⌖'],
     ['investigations', '#investigations', 'Investigations', '◉'],
