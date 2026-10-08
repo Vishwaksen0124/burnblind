@@ -29,7 +29,7 @@ export default function ProductPage() {
   }, []);
 
   return <div className="product-page">
-    <section className="product-hero" aria-labelledby="product-title">
+    <section className="product-hero" id="home" aria-labelledby="product-title">
       <div className="hero-copy">
         <p className="product-kicker"><span /> ENVIRONMENTAL INTELLIGENCE · PUNJAB + HARYANA</p>
         <h1 id="product-title">Seeing the fires<br />others <em>might miss.</em></h1>
@@ -37,10 +37,11 @@ export default function ProductPage() {
         <div className="hero-actions"><a className="primary-button" href="#monitoring">Explore monitoring <span aria-hidden="true">→</span></a><a className="secondary-button" href="#landing-how-it-works">How it works</a></div>
         <p className="hero-caveat">Historical replay · Oct–Nov 2025 · Candidate observations, not confirmed incidents</p>
       </div>
-      <div className="hero-visual" aria-label="Map of historical thermal observations in Punjab and Haryana">
-        <div className="hero-map"><CandidateMap events={events} className="map hero-map-canvas" interactive={false} zoomControl={false} /></div>
-        <div className="hero-map-label"><span>GK2A AMI · HISTORICAL OBSERVATIONS</span><strong>{eventTotal === null ? '—' : eventTotal.toLocaleString()}</strong><small>candidate event clusters</small></div>
-        <div className="hero-coordinates">29°–33° N<br />74°–78° E</div>
+      <div className="hero-visual">
+        <img className="hero-background-image" src="/images/nasa-punjab-smoke-2024.jpg" alt="Satellite view of smoke over Punjab and Haryana on November 8, 2024" fetchPriority="high" />
+        <div className="hero-image-shade" aria-hidden="true" />
+        <div className="hero-image-meta"><span>SATELLITE CONTEXT · 08 NOV 2024</span><a href="https://science.nasa.gov/earth/earth-observatory/is-fire-activity-declining-in-northwestern-india-153826/" target="_blank" rel="noreferrer">NASA Earth Observatory ↗</a><small>VIIRS / Suomi NPP · Image by Wanmei Liang</small></div>
+        <div className="hero-coordinates">PUNJAB + HARYANA<br />NORTHWESTERN INDIA</div>
       </div>
       <a className="scroll-cue" href="#why-burnblind"><span /> Read the observation gap</a>
     </section>

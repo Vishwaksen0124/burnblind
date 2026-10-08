@@ -15,10 +15,14 @@ const pages = {
 function App() {
   const [page, setPage] = useState(pages[window.location.hash] || 'home');
   useEffect(() => {
-    const syncPage = () => setPage(pages[window.location.hash] || 'monitoring');
+    const syncPage = () => {
+      const nextPage = pages[window.location.hash] || 'home';
+      setPage(nextPage);
+    };
     window.addEventListener('hashchange', syncPage);
     return () => window.removeEventListener('hashchange', syncPage);
   }, []);
+  useEffect(() => { window.scrollTo(0, 0); }, [page]);
 
   return <div className="app-shell">
     <Header page={page} />

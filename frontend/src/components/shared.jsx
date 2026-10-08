@@ -1,28 +1,23 @@
+import { Flame, Satellite } from 'lucide-react';
+
 export function Header({ page }) {
-  if (page === 'home') {
-    return <header className="landing-topbar">
-      <a className="brand" href="#home" aria-label="BurnBlind product home"><span className="brand-mark" aria-hidden="true"><span /></span><span className="brand-name">BURN<span>BLIND</span></span></a>
-      <nav className="landing-nav" aria-label="Primary navigation">
-        <a href="#home" aria-current="page">Product</a><a href="#landing-how-it-works">How it works</a><a href="#monitoring">Monitoring</a><a href="#investigations">Investigations</a><a href="#landing-methodology">Documentation</a>
-      </nav>
-      <a className="landing-nav-cta" href="#monitoring">Explore monitoring <span aria-hidden="true">→</span></a>
-    </header>;
-  }
   const links = [
-    ['monitoring', '#monitoring', 'Monitoring', '⌖'],
-    ['investigations', '#investigations', 'Investigations', '◉'],
-    ['how-it-works', '#how-it-works', 'How it works', '⌁'],
-    ['methodology', '#methodology', 'Data & methodology', '▤'],
+    ['monitoring', '#monitoring', 'Monitoring'],
+    ['investigations', '#investigations', 'Investigations'],
+    ['how-it-works', page === 'home' ? '#landing-how-it-works' : '#how-it-works', 'How it works'],
+    ['methodology', page === 'home' ? '#landing-methodology' : '#methodology', 'Documentation'],
   ];
-  return <header className="side-rail">
-    <a className="brand" href="#monitoring" aria-label="BurnBlind monitoring home">
-      <span className="brand-mark" aria-hidden="true"><span /></span>
+  return <header className="landing-topbar">
+    <a className="brand" href="#home" onClick={() => window.scrollTo(0, 0)} aria-label="BurnBlind home">
+      <span className="brand-mark" aria-hidden="true"><Satellite className="brand-satellite" /><Flame className="brand-flame" /></span>
       <span className="brand-name">BURN<span>BLIND</span></span>
     </a>
-    <nav className="primary-nav" aria-label="Primary navigation">
-      {links.map(([id, href, label, icon]) => <a key={id} href={href} aria-current={page === id ? 'page' : undefined}><span className="nav-icon" aria-hidden="true">{icon}</span><span>{label}</span></a>)}
+    <nav className="landing-nav" aria-label="Primary navigation">
+      <a href="#home" onClick={() => window.scrollTo(0, 0)} aria-current={page === 'home' ? 'page' : undefined}>Product</a>
+      {links.map(([id, href, label]) => <a key={id} href={href} aria-current={page === id ? 'page' : undefined}>{label}</a>)}
     </nav>
-    <div className="rail-foot"><span className="mode-badge"><i /> HISTORICAL REPLAY · 2025</span><small>Punjab & Haryana<br />Environmental intelligence</small></div>
+    <span className="mode-badge"><i /> HISTORICAL REPLAY · 2025</span>
+    <a className="landing-nav-cta" href="#monitoring">Explore monitoring <span aria-hidden="true">→</span></a>
   </header>;
 }
 
