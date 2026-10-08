@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CircleMarker, MapContainer, TileLayer, Tooltip, ZoomControl } from 'react-leaflet';
-import { getEvent, getEvents, getSummary } from '../api.js';
+import { getEvents, getSummary } from '../api.js';
 import { eventLabel, eventSearchText, formatTimestamp } from '../lib/eventView.js';
 import { Eyebrow, PageHeading, StateMessage } from './shared.jsx';
 import EventDetail from './EventDetail.jsx';
@@ -41,9 +41,8 @@ export default function Dashboard() {
     });
   }, [events, filter, query]);
 
-  async function openEvent(event) {
+  function openEvent(event) {
     setSelected(event);
-    try { setSelected(await getEvent(event.event_id)); } catch { /* The list item remains a useful fallback. */ }
   }
 
   return <>
