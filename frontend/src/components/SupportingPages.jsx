@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+import { getInvestigations } from '../api.js';
 import { PageHeading, StateMessage } from './shared.jsx';
 
 const PIPELINE = [
@@ -38,9 +40,60 @@ export function DataPage() {
 }
 
 export function InvestigationsPage() {
+  const [items, setItems] = useState([]);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState('');
+  const [retry, setRetry] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setItems([]);
+    setNextCursor(null);
+    getInvestigations(controller.signal)
+      .then((page) => { setItems(page.items || []); setNextCursor(page.next_cursor || null); })
+      .catch((err) => { if (err.name !== 'AbortError') setError(err.message); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [retry]);
+
+  async function loadMore() {
+    if (!nextCursor || loadingMore) return;
+    const controller = new AbortController();
+    setLoadingMore(true);
+    try {
+      const page = await getInvestigations(controller.signal, 50, nextCursor);
+      setItems((current) => [...current, ...(page.items || [])]);
+      setNextCursor(page.next_cursor || null);
+    } catch (err) {
+      if (err.name !== 'AbortError') setError(err.message);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
   return <>
-    <PageHeading eyebrow="EVIDENCE REVIEW" title="Investigations">Investigation reports will appear here when the event trigger and evidence pipeline are available.</PageHeading>
-    <StateMessage title="Investigation data unavailable">This historical replay has no scored events or completed agent investigations. Candidate detections are not sent for autonomous response.</StateMessage>
-    <section className="investigation-readiness panel"><p className="eyebrow">CURRENT REPLAY CAPABILITIES</p><ul><li>Candidate detections can be reviewed by location, time, and source.</li><li>Blindness scores, fire likelihood, and exposure estimates are not available.</li><li>No investigation has been queued or completed for this sample.</li></ul></section>
+    <PageHeading eyebrow="EVIDENCE REVIEW" title="Investigations">Queued and completed evidence reviews, linked to their candidate event records.</PageHeading>
+    {loading && <StateMessage title="Loading investigations">Reading persisted review records.</StateMessage>}
+    {error && !loading && <StateMessage title="Investigation data unavailable">{error} <button className="text-button" onClick={() => setRetry((value) => value + 1)}>Retry</button></StateMessage>}
+    {!loading && !error && items.length === 0 && <StateMessage title="No investigations yet">Request an investigation from a candidate event. Completed reports will appear here.</StateMessage>}
+    {!loading && !error && items.length > 0 && <section className="investigation-list" aria-label="Investigation reports">
+      {items.map((item) => <article className="investigation-card panel" key={item.event_id}>
+        <header><div><p className="eyebrow">EVENT · {item.event_id}</p><h2>{item.investigation?.classification?.replaceAll('_', ' ') || item.status?.replaceAll('_', ' ')}</h2></div><span className={`investigation-status status-${item.status?.toLowerCase()}`}>{item.status?.replaceAll('_', ' ')}</span></header>
+        {item.investigation?.summary && <p className="investigation-card-summary">{item.investigation.summary}</p>}
+        {item.investigation?.evidence?.length > 0 && <p className="investigation-card-meta">{item.investigation.evidence.length} cited evidence {item.investigation.evidence.length === 1 ? 'record' : 'records'} · {item.investigation.recommended_action?.replaceAll('_', ' ')}</p>}
+        {item.error_code && <p className="report-error">Review failed · {item.error_code}</p>}
+        <footer><span>Requested {formatDate(item.requested_at_utc)}</span>{item.completed_at_utc && <span>Completed {formatDate(item.completed_at_utc)}</span>}<span>{item.model_id || 'Model metadata unavailable'}</span></footer>
+      </article>)}
+      {nextCursor && <button className="action-button investigation-load-more" disabled={loadingMore} onClick={loadMore}>{loadingMore ? 'Loading…' : 'Load more investigations'}</button>}
+    </section>}
   </>;
+}
+
+function formatDate(value) {
+  if (!value) return 'time unavailable';
+  const date = new Date(value);
+  return Number.isNaN(date.valueOf()) ? 'time unavailable' : date.toLocaleString();
 }

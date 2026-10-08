@@ -259,3 +259,12 @@ body{background:#0b0d0e;color:#f1f0eb}
 .terms-accordion details[open] summary::after{transform:rotate(45deg)}
 .terms-accordion details p{max-width:720px;margin:0;padding:0 30px 16px 0;color:#a5a8a8;font-size:11px;line-height:1.75}
 @media(prefers-reduced-motion:reduce){.detail-tabs [role="tab"],.terms-accordion summary::after{transition:none}}
+.investigation-list{display:grid;gap:10px}
+.investigation-card{padding:15px 17px}
+.investigation-card>header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.investigation-card .eyebrow{margin-bottom:5px}
+.investigation-card h2{margin:0;font-size:14px;font-weight:570}
+.investigation-card-summary{max-width:900px;margin:12px 0;color:#c8c8bd;font-size:11px;line-height:1.7}
+.investigation-card-meta{margin:0;color:#e0bd83;font-size:9px}
+.investigation-card>footer{margin-top:13px;padding-top:10px;display:flex;flex-wrap:wrap;gap:8px 18px;border-top:1px solid #30322b;color:#85877c;font:8px ui-monospace,SFMono-Regular,Consolas,monospace}
+.investigation-load-more{justify-self:start}

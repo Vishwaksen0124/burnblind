@@ -53,4 +53,5 @@ export const getSummary = (signal) => request('/summary', { signal });
 export const getEvents = (signal, limit = 100) => request(`/events?limit=${limit}`, { signal });
 export const getEvent = (id, signal) => request(`/events/${encodeURIComponent(id)}`, { signal });
 export const getInvestigation = (id, signal) => request(`/events/${encodeURIComponent(id)}/investigation`, { signal });
+export const getInvestigations = (signal, limit = 50, cursor) => request(`/investigations?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`, { signal });
 export const requestInvestigation = (id) => request(`/events/${encodeURIComponent(id)}/investigate`, { method: 'POST' });
