@@ -41,7 +41,7 @@ Resources:
       StageName: prod
       AccessLogSettings:
         DestinationArn: !GetAtt ApiAccessLogs.Arn
-        Format: '{"requestId":"$context.requestId","routeKey":"$context.routeKey","status":"$context.status","integrationStatus":"$context.integrationStatus","integrationError":"$context.integrationErrorMessage","responseLength":"$context.responseLength"}'
+        Format: '{"requestId":"$context.requestId","method":"$context.httpMethod","path":"$context.path","routeKey":"$context.routeKey","status":"$context.status","integrationStatus":"$context.integrationStatus","integrationError":"$context.integrationErrorMessage","responseLength":"$context.responseLength"}'
       DefaultRouteSettings:
         ThrottlingBurstLimit: 5
         ThrottlingRateLimit: 2
