@@ -1,6 +1,6 @@
 export function Header({ page }) {
   const links = [
-    ['monitoring', '#monitoring', 'Live monitoring', '⌖'],
+    ['monitoring', '#monitoring', 'Monitoring', '⌖'],
     ['investigations', '#investigations', 'Investigations', '◉'],
     ['how-it-works', '#how-it-works', 'How it works', '⌁'],
     ['methodology', '#methodology', 'Data & methodology', '▤'],

@@ -46,7 +46,7 @@ export default function Dashboard() {
   }
 
   return <>
-    <PageHeading eyebrow="ENVIRONMENTAL MONITORING · PUNJAB + HARYANA" title={<>Live <em>monitoring</em></>} aside={<div className="data-window"><span>LAST OBSERVATION</span><strong>{summary?.last_updated ? formatTimestamp(summary.last_updated) : 'Historical sample'}</strong></div>}>
+    <PageHeading eyebrow="ENVIRONMENTAL MONITORING · PUNJAB + HARYANA" title={<>Monitoring <em>overview</em></>} aside={<div className="data-window"><span>LAST OBSERVATION</span><strong>{summary?.last_updated ? formatTimestamp(summary.last_updated) : 'Historical sample'}</strong></div>}>
       Potential thermal observations and coverage gaps across the replay region. Each marker is a candidate detection, not a confirmed incident.
     </PageHeading>
 
