@@ -39,7 +39,7 @@ Output:
 - time-of-day activity
 - comparison to baseline
 
-## get_weather_context
+## get_weather
 
 Output:
 - wind speed
@@ -48,7 +48,7 @@ Output:
 - source
 - quality/availability
 
-## get_exposure_context
+## get_exposure
 
 Output:
 - estimated exposure

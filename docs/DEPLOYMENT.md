@@ -35,27 +35,29 @@ are skipped; an analyst override remains available. Build and deploy with:
 ```text
 sam build --template-file infrastructure/sam/template.yaml
 sam deploy --stack-name burnblind-replay --resolve-s3 --capabilities CAPABILITY_IAM \
-  --parameter-overrides DashboardOrigin=https://main.d3k8g1d6au7814.amplifyapp.com
+  --parameter-overrides DashboardOrigin=https://main.d3k8g1d6au7814.amplifyapp.com \
+    InvestigationModelProvider=bedrock-mantle DeepSeekModelId=deepseek.v3.2
 ```
 
 Set `DashboardOrigin` to the Amplify branch URL and retain the local Vite
 origin in `LocalDashboardOrigin`. Seed candidate and attached source records
-using `EVENT_TABLE=<stack output> EVIDENCE_TABLE=<stack output> python scripts/seed_dynamodb.py`. Build the client
-with `VITE_API_BASE_URL=<ApiBaseUrl>/api`, then publish its `dist/` contents
-using `python scripts/deploy_amplify_manual.py --app-id d3k8g1d6au7814 --branch main`.
-This manual Amplify app is not linked to a Git provider. Raw and processed
-archives are not deployed.
+using `EVENT_TABLE=<stack output> EVIDENCE_TABLE=<stack output> python scripts/seed_dynamodb.py`.
+Push frontend changes to `main` to run `.github/workflows/amplify-deploy.yml`,
+which builds the frontend, audits npm dependencies, assumes the AWS deploy role
+through GitHub OIDC, and publishes the build to Amplify. The backend SAM stack
+is updated with `sam build` and `sam deploy` as shown above. The Amplify app is
+published by GitHub Actions rather than linked directly to a Git provider.
+Raw and processed archives are not deployed.
 
 The investigator uses Strands Agents with Amazon Bedrock DeepSeek V3.2
-(`deepseek.v3.2`) in the stack region. The worker role can invoke only that
-foundation model, and reserved concurrency is two. The stack has no scheduled
-agent trigger. The DynamoDB stream qualification worker runs only when score
-features are attached; the current replay seeder does not derive those
-features. DeepSeek remains the configured model, but account authorization is
-currently `NOT_AUTHORIZED`; Bedrock returns `Operation not allowed`. Verify
-Bedrock model access, Marketplace permissions, and a valid payment method
-before expecting investigation jobs to complete. The worker role includes the
-documented Marketplace subscription actions.
+(`deepseek.v3.2`) through the `bedrock-mantle` OpenAI-compatible endpoint in
+the stack region. The verified Mantle call succeeded with the existing AWS
+credentials. The worker role grants `bedrock-mantle:CreateInference` only for
+the account's default project; its separate Bedrock Runtime permission is
+scoped to the configured model. Reserved concurrency is two. The stack has no
+scheduled agent trigger. The DynamoDB stream qualification worker runs only
+when score features are attached; the current replay seeder does not derive
+those features.
 
 The Amplify publish workflow assumes the role provisioned by
 `infrastructure/sam/github-actions-role.yaml`. GitHub OIDC subjects include

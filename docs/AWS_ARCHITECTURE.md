@@ -21,7 +21,8 @@
 | SQS | Async processing |
 | EventBridge | Scheduling |
 | CloudWatch | Logs/metrics |
-| SageMaker AI | Recommended AWS-hosted model-serving path if feasible |
+| Amazon Bedrock Mantle | DeepSeek inference provider for the Strands investigation agent |
+| SageMaker AI | Optional model provider if the account has endpoint quota |
 
 ## 2. Service-by-service design
 
@@ -182,17 +183,24 @@ The demo should visibly establish:
 
 ## 7. Model-serving decision
 
-The preferred hackathon-aligned deployment is:
+The deployed model-provider boundary is:
 
 ```text
-Strands Agents SDK
-        ↓
-SageMaker AI model endpoint
-        ↓
-Investigation Agent
+Candidate event
+      ↓
+Strands Agent ── DeepSeek V3.2 on Bedrock Mantle
+      ↓
+Event-scoped read-only evidence tools
+      ↓
+Evidence-cited structured report
+      ↓
+DynamoDB → dashboard UI
 ```
 
-If SageMaker deployment materially threatens the hackathon timeline, keep the agent abstraction provider-neutral and use another permitted model provider while retaining Strands. The final implementation must document the actual provider used.
+The model provider remains independently configurable while Strands owns the
+agent loop, tool execution, and structured report contract. The deployed
+Mantle model ID is `deepseek.v3.2`; the Lambda role is scoped to the default
+Bedrock project.
 
 The model provider is not the source of environmental truth. Deterministic evidence tools remain authoritative.
 

@@ -217,19 +217,19 @@ implemented. Events qualify from versioned normalized score features; replay
 seed rows have no score features and therefore do not auto-enqueue. Analysts
 can still request an override from the event detail view.
 
-- [x] define provider configuration through Bedrock model ID and region
+- [x] configure Strands separately from the Bedrock Mantle model provider
 - [x] inject a fake agent factory for deterministic runtime tests
 
 
-- [x] select Amazon Bedrock DeepSeek V3.2
+- [x] select Amazon Bedrock Mantle DeepSeek V3.2 (`deepseek.v3.2`)
 - [x] configure Strands
 - [x] agent instructions
 - [x] output schema
 - [x] `get_event`
 - [x] `get_satellite_evidence`
 - [x] `get_historical_context`
-- [x] `get_weather_context`
-- [x] `get_exposure_context`
+- [x] `get_weather`
+- [x] `get_exposure`
 - [x] `get_sensor_comparison`
 - [x] tool validation and requested-event scoping
 - [x] evidence grounding

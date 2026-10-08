@@ -6,8 +6,8 @@ Determine whether the Investigation Agent is grounded, useful, and reliable enou
 
 ## Implemented runtime
 
-- Model: Amazon Bedrock `deepseek.v3.2` through Strands Agents; region comes from
-  the Lambda region (`us-east-2` in the current deployment).
+- Model: Amazon Bedrock Mantle `deepseek.v3.2` through Strands Agents; region
+  comes from the Lambda region (`us-east-2` in the current deployment).
 - Trigger: DynamoDB stream qualification against normalized score features and
   versioned `config/scoring.v1.json` thresholds, plus an analyst override.
   Candidate rows with no score features do not auto-queue.

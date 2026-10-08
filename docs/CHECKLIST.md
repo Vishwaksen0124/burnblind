@@ -44,7 +44,7 @@
 - [x] DynamoDB stream qualification with configured score thresholds
 - [x] Analyst override request from event detail
 - [x] Strands SDK
-- [x] Amazon Bedrock DeepSeek V3.2 provider
+- [x] Amazon Bedrock Mantle DeepSeek V3.2 provider
 - [x] Read-only, event-scoped evidence tools
 - [x] Evidence ID grounding and structured output
 - [ ] Broader model evaluation set

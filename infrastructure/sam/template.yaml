@@ -27,6 +27,15 @@ Parameters:
     Type: String
     Default: deepseek.v3.2
     Description: Amazon Bedrock model ID for the investigation worker.
+  InvestigationModelProvider:
+    Type: String
+    Default: bedrock-mantle
+    AllowedValues: [bedrock, bedrock-mantle, sagemaker]
+    Description: Model provider used by the Strands investigation agent.
+  SageMakerEndpointName:
+    Type: String
+    Default: unset
+    Description: SageMaker endpoint name when the model provider is sagemaker.
 
 Resources:
   ApiAccessLogs:
@@ -197,7 +206,9 @@ Resources:
       Handler: backend.agent.worker.lambda_handler
       Environment:
         Variables:
+          INVESTIGATION_MODEL_PROVIDER: !Ref InvestigationModelProvider
           BEDROCK_MODEL_ID: !Ref DeepSeekModelId
+          SAGEMAKER_ENDPOINT_NAME: !Ref SageMakerEndpointName
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref EventsTable
@@ -214,10 +225,20 @@ Resources:
         - Statement:
             - Effect: Allow
               Action:
+                - bedrock-mantle:CreateInference
+              Resource: !Sub 'arn:${AWS::Partition}:bedrock-mantle:${AWS::Region}:${AWS::AccountId}:project/default'
+        - Statement:
+            - Effect: Allow
+              Action:
                 - aws-marketplace:Subscribe
                 - aws-marketplace:Unsubscribe
                 - aws-marketplace:ViewSubscriptions
               Resource: '*'
+        - Statement:
+            - Effect: Allow
+              Action:
+                - sagemaker:InvokeEndpoint
+              Resource: !Sub 'arn:${AWS::Partition}:sagemaker:${AWS::Region}:${AWS::AccountId}:endpoint/${SageMakerEndpointName}'
       Events:
         InvestigationMessages:
           Type: SQS

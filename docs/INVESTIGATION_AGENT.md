@@ -52,11 +52,11 @@ Returns relevant sensor observations and timestamps.
 
 Returns historical activity around the location/time.
 
-### get_weather_context
+### get_weather
 
 Returns wind and relevant weather information.
 
-### get_exposure_context
+### get_exposure
 
 Returns population/sensitive-location estimates.
 
@@ -242,7 +242,10 @@ The agent may read evidence but must not:
 
 ## 14. Deployed implementation
 
-- Strands Agents SDK with Amazon Bedrock DeepSeek V3.2 (`deepseek.v3.2`).
+- Strands Agents SDK with Amazon Bedrock Mantle DeepSeek V3.2 (`deepseek.v3.2`).
+- The agent checks the event, attached satellite evidence, historical context,
+  reanalysis weather, population exposure availability, and sensor comparison
+  through event-scoped read-only tools before returning its structured report.
 - A qualifying score update or analyst override is persisted in DynamoDB and
   dispatched through an encrypted FIFO SQS queue with a dead-letter queue.
 - The worker has a 120-second timeout, 900-token model output cap, and reserved

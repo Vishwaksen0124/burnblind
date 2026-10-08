@@ -111,7 +111,7 @@ def build_evidence_tools(
         }
 
     @tool
-    def get_weather_context(event_id: str) -> dict[str, Any]:
+    def get_weather(event_id: str) -> dict[str, Any]:
         """Read ERA5 reanalysis wind at the event time; values are estimates, not measurements."""
         event = scoped_event(event_id)
         if event is None:
@@ -143,7 +143,7 @@ def build_evidence_tools(
         }
 
     @tool
-    def get_exposure_context(event_id: str) -> dict[str, Any]:
+    def get_exposure(event_id: str) -> dict[str, Any]:
         """Read an estimated population exposure value when one is available."""
         if scoped_event(event_id) is None:
             return {"status": "NOT_FOUND", "event_id": event_id}
@@ -170,7 +170,7 @@ def build_evidence_tools(
             "caveat": "No independent source record is attached to this event; that is not evidence of a sensor non-detection.",
         }
 
-    return [get_event, get_satellite_evidence, get_historical_context, get_weather_context, get_exposure_context, get_sensor_comparison]
+    return [get_event, get_satellite_evidence, get_historical_context, get_weather, get_exposure, get_sensor_comparison]
 
 
 def _parse_time(value: Any) -> datetime | None:

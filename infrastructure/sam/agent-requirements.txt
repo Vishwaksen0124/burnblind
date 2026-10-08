@@ -1,5 +1,6 @@
 # Minimal non-AWS dependencies used by the Strands Bedrock/tool runtime.
 # boto3/botocore are supplied by the managed Python Lambda runtime.
+aws-bedrock-token-generator==1.1.0
 pydantic==2.13.5
 jsonschema==4.26.0
 docstring-parser==0.18.0
@@ -8,3 +9,6 @@ opentelemetry-sdk==1.45.1
 opentelemetry-instrumentation-threading==0.66b1
 PyYAML==6.0.3
 watchdog==6.0.0
+# Required by Strands' OpenAI-compatible Mantle and SageMaker model providers.
+openai>=1,<3
+mypy-boto3-sagemaker-runtime>=1.35,<2
