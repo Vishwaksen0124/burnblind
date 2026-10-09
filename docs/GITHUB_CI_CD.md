@@ -16,6 +16,10 @@
   to `main` deploys only the `burnblind-replay` stack through a separate OIDC
   role and a CloudFormation execution role protected by the
   `BurnBlindRuntimeBoundary` permissions boundary.
+- After a successful backend deployment, the workflow runs
+  `scripts/smoke_deployed_api.py` against the stack API output. It checks health,
+  events, action center, a map layer, investigations, dashboard CORS, and
+  anonymous write rejection using a reserved nonexistent event ID.
 - No static AWS credentials are required in GitHub. The backend workflow reads
   only these repository variables: `AWS_BACKEND_DEPLOY_ROLE_ARN` and
   `BURNBLIND_CFN_EXECUTION_ROLE_ARN`.

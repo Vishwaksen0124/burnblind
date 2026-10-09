@@ -13,7 +13,7 @@ not imply that its live data source or deployed AWS path has been verified.
 | Agent | Strands integration, event-scoped evidence packet/report, DeepSeek V3.2 Mantle; cross-sensor status handling and retry race regressions covered by unit tests | Broader model scenario evaluation and live integration coverage |
 | AWS | Amplify and backend OIDC workflows passed; SAM stack deployed; health, summary, event, action-center, investigation, map-layer and CORS smoke checks passed; one queue-to-report flow verified; Cognito JWT protects both API path forms and anonymous mutation probes return 401 | Invited-reviewer write test, security/cost review and ongoing operational verification |
 | Data | GK2A replay sample is present; weather and WorldPop adapters are implemented | FIRMS key/reference data, licensing review, live source checks, full artifact lifecycle |
-| Quality | 91 tests, production frontend build, SAM validation, API/queue/model smoke checks | Browser e2e, broader integration, security and cost review |
+| Quality | 93 tests, production frontend build, SAM validation, deployed API/CORS/auth smoke checks | Browser e2e, source-to-storage integration, security and cost review |
 
 The backend and model path were verified on 2026-10-09. Reviewer JWT
 authentication is deployed in API Gateway, the Lambda handler, and frontend.
@@ -103,7 +103,7 @@ still needed to complete the authenticated sign-in and outcome-write check.
 - [ ] Cost guardrails verified
 
 
-- [x] Unit tests (91 passing locally, 2026-10-09)
+- [x] Unit tests (93 passing locally, 2026-10-09)
 - [ ] Integration tests
 - [x] Agent grounding, event-scope, sensor-comparison, output-schema, and retry-race tests
 - [x] One event-scoped queue → Strands/DeepSeek → DynamoDB → investigations API happy path verified
@@ -111,6 +111,7 @@ still needed to complete the authenticated sign-in and outcome-write check.
 - [ ] Authenticated reviewer sign-in and human-review submission
 - [ ] Broader security and cost review
 - [x] Backend and public frontend deployment smoke checks
+- [x] Live API contract, dashboard CORS, and anonymous mutation rejection smoke checks; same checks are now a post-deploy CI gate
 - [ ] Demo rehearsal
 - [x] Public GitHub
 - [x] Public demo URL
@@ -147,13 +148,14 @@ still needed to complete the authenticated sign-in and outcome-write check.
 
 ## Local verification and remaining release gates (2026-10-09)
 
-- [x] pytest -q: 91 passed (2026-10-09)
+- [x] pytest -q: 93 passed (2026-10-09)
 - [x] npm run build: Vite production build passed
 - [x] sam validate --lint --template-file infrastructure/sam/template.yaml
 - [x] sam build --template-file infrastructure/sam/template.yaml
 - [x] Confirmed the built Event API includes backend/processing; the investigator includes backend/impact and backend/processing
 - [x] Frontend includes live-loaded replay distribution, source counts, source limitations, investigation input/output documentation, review outcomes, and replay controls
 - [x] Backend changes deployed and smoke-tested against AWS
+- [x] Deployed API smoke checker verified against health, events, action center, blind-spot layer, investigations, and both anonymous protected POST routes
 - [x] CI/CD role expanded with a repository/branch-scoped SAM deployment role and runtime permissions boundary
 - [ ] NASA FIRMS MAP_KEY stored in AWS Secrets Manager and historical comparison records acquired
 - [x] One live DeepSeek V3.2 investigation completed after AWS role setup; report persisted and returned by the investigations API

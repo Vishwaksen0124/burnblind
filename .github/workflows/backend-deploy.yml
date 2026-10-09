@@ -82,3 +82,15 @@ jobs:
           InvestigationModelProvider=bedrock-mantle
           DeepSeekModelId=deepseek.v3.2
           SageMakerEndpointName=unset
+
+      - name: Smoke-test deployed API and anonymous mutation guards
+        if: github.event_name != 'pull_request'
+        env:
+          DASHBOARD_ORIGIN: https://main.d3k8g1d6au7814.amplifyapp.com
+        run: |
+          API_BASE_URL="$(aws cloudformation describe-stacks \
+            --stack-name "$BACKEND_STACK_NAME" \
+            --region "$AWS_REGION" \
+            --query "Stacks[0].Outputs[?OutputKey=='ApiBaseUrl'].OutputValue | [0]" \
+            --output text)"
+          python scripts/smoke_deployed_api.py "$API_BASE_URL" --origin "$DASHBOARD_ORIGIN"
