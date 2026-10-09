@@ -8,9 +8,10 @@ Determine whether the Investigation Agent is grounded, useful, and reliable enou
 
 - Model: Amazon Bedrock Mantle `deepseek.v3.2` through Strands Agents; region
   comes from the Lambda region (`us-east-2` in the current deployment).
-- Trigger: DynamoDB stream qualification against normalized score features and
-  versioned `config/scoring.v1.json` thresholds, plus an analyst override.
-  Candidate rows with no score features do not auto-queue.
+- Trigger: environmental analysis runs first for every new event; normalized
+  score features are then evaluated against versioned
+  `config/scoring.v1.json` thresholds. Investigation is available only after
+  human review. Candidate rows with incomplete score inputs do not qualify.
 - Tools: event summary, attached satellite records, historical context,
   Open-Meteo ERA5 wind, exposure availability, and attached source comparison.
 - Guardrails: tools are read-only and scoped to the requested event; report
@@ -18,6 +19,10 @@ Determine whether the Investigation Agent is grounded, useful, and reliable enou
   null; conclusions remain advisory for human review.
 - Runtime limits: output capped at 900 tokens and Lambda reserved concurrency
   capped at two. Latency has not been benchmarked.
+
+The agent consumes enriched evidence and deterministic scores as context. It
+does not calculate blindness, fire-likelihood, or priority and cannot replace
+the reviewer decision.
 
 The high-uncertainty rule requires supported fire-likelihood evidence; missing
 features by themselves do not enqueue an event. A feature fingerprint prevents

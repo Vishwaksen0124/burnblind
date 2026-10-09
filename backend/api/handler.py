@@ -160,6 +160,13 @@ def _public_latest_review(review_history: Any, event_id: str) -> dict[str, Any] 
     return {key: latest[key] for key in ("outcome", "reviewed_at_utc") if key in latest}
 
 
+def _review_allows_investigation(review_store: Any, event_id: str) -> bool:
+    if review_store is None:
+        return False
+    reviews = review_store.list_for_event(event_id, limit=1)
+    return bool(reviews and reviews[0].get("outcome") in {"CONFIRMED", "NEEDS_VERIFICATION"})
+
+
 def handle_request(
     method: str,
     path: str,
@@ -314,6 +321,8 @@ def handle_request(
             elif len(parts) == 4 and parts[3] == "investigate" and method == "POST":
                 if not reviewer_id:
                     status, response = _error(401, "REVIEWER_AUTH_REQUIRED", "Sign in with an authorized reviewer account to request an investigation.")
+                elif not _review_allows_investigation(review_store, event.event_id):
+                    status, response = _error(409, "REVIEW_REQUIRED", "A reviewer must confirm or request verification before investigation.")
                 elif investigation_launcher is None:
                     status, response = _error(
                         409,

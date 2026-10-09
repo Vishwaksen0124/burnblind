@@ -28,15 +28,17 @@ score > 80 → print "HIGH"
 
 an agent would not be justified.
 
-## 3. Trigger policy
+## 3. Trigger policy and workflow position
 
-The DynamoDB stream trigger evaluates an event when normalized `score_features`
-are written. It uses versioned thresholds from `config/scoring.v1.json` and
-queues on high priority, high uncertainty with supported fire-likelihood
-evidence, high blindness with moderate likelihood, or high exposure. Missing
-features alone do not qualify an event. Historical candidate rows without
-score features are not auto-enqueued; an analyst can still request an override
-from the event detail view.
+Environmental analysis runs first for every newly persisted event and records
+source-backed evidence plus explicit unavailable states. A deterministic
+scoring trigger then evaluates normalized `score_features` using versioned
+thresholds from `config/scoring.v1.json`. It records qualification reasons but
+does not queue the agent by itself.
+
+The reviewer sees the enriched evidence, scores, uncertainty, and reasons. A
+reviewer decision is required before investigation is requested. Missing
+features do not qualify an event and do not become negative evidence.
 
 ## 4. Evidence preparation
 
@@ -72,16 +74,19 @@ Returns normalized cross-sensor comparison.
 ## 5. Agent workflow
 
 ```text
-Receive event ID in worker state
+Receive event ID after an accepted human review
     ↓
-Service loads event and all required evidence
+Service loads event, deterministic score, and all required evidence
     ↓
 Pass one JSON evidence packet to Strands
     ↓
 Model returns a constrained evidence report
     ↓
-Service validates citations and persists report + metadata
+Service validates citations and persists advisory report + metadata
 ```
+
+The agent interprets evidence and prepares an advisory brief. It never
+calculates the core scores and never independently confirms a fire.
 
 ## 6. Structured output
 

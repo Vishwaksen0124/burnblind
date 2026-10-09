@@ -8,8 +8,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-from backend.agent.storage import DynamoInvestigationStore, SqsInvestigationLauncher
-from backend.api.dynamodb_repository import DynamoCandidateEventRepository
 from backend.scoring.engine import ScoreFeatures, investigation_trigger, load_score_config, score_event
 
 
@@ -44,24 +42,19 @@ def lambda_handler(event, context):
 
     dynamodb = boto3.resource("dynamodb")
     events_table = dynamodb.Table(_required_env("EVENT_TABLE"))
-    investigations_table = dynamodb.Table(_required_env("INVESTIGATION_TABLE"))
-    queue_url = _required_env("INVESTIGATION_QUEUE_URL")
-    event_repository = DynamoCandidateEventRepository(_required_env("EVENT_TABLE"), events_table)
-    store = DynamoInvestigationStore(investigations_table)
-    launcher = SqsInvestigationLauncher(store, queue_url, boto3.client("sqs"))
     deserializer = TypeDeserializer()
     failures = []
 
     for record in event.get("Records", []):
         try:
-            _handle_record(record, deserializer, events_table, event_repository, launcher)
+            _handle_record(record, deserializer, events_table)
         except Exception as exc:
             print(json.dumps({"level": "ERROR", "event_id": record.get("eventID"), "error": type(exc).__name__}))
             failures.append({"itemIdentifier": record["eventID"]})
     return {"batchItemFailures": failures}
 
 
-def _handle_record(record, deserializer, events_table, event_repository, launcher) -> None:
+def _handle_record(record, deserializer, events_table) -> None:
     image = record.get("dynamodb", {}).get("NewImage")
     if not image:
         return
@@ -82,20 +75,6 @@ def _handle_record(record, deserializer, events_table, event_repository, launche
         return
 
     decision = evaluate_score_features(features)
-    if decision["should_investigate"]:
-        candidate = event_repository.get(item["event_id"])
-        if candidate is None:
-            raise ValueError("scored candidate event no longer exists")
-        request_id = "score-" + hashlib.sha256(
-            f"{candidate.event_id}:{fingerprint}".encode()
-        ).hexdigest()[:32]
-        launcher.enqueue(
-            candidate,
-            request_id,
-            trigger_reasons=decision["reasons"],
-            score_snapshot=decision,
-        )
-
     _persist_evaluation(events_table, item["event_id"], fingerprint, decision)
 
 
@@ -104,7 +83,7 @@ def _persist_evaluation(table, event_id: str, fingerprint: str, decision: dict[s
         "trigger_evaluation_hash": fingerprint,
         "trigger_evaluation_version": decision["score_version"],
         "investigation_qualifies": decision["should_investigate"],
-        "investigation_status": "QUEUED" if decision["should_investigate"] else "NOT_REQUIRED",
+        "investigation_status": "AWAITING_HUMAN_REVIEW" if decision["should_investigate"] else "NOT_REQUIRED",
         "investigation_trigger_reasons": decision["reasons"],
         "score_version": decision["score_version"],
         "feature_version": decision["feature_version"],

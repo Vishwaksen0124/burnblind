@@ -51,7 +51,7 @@ class DynamoCandidateEventRepository:
         item = self._table.get_item(Key={"event_id": event_id}, ConsistentRead=True).get("Item")
         if not item:
             return None
-        allowed = ("blind_spot", "sensor_comparison", "exposure", "replay_timeline", "environmental_analysis")
+        allowed = ("blind_spot", "monitoring_coverage", "historical_context", "sensor_comparison", "exposure", "replay_timeline", "environmental_analysis")
         result = {key: item[key] for key in allowed if key in item}
         for key in result:
             result[key] = _plain_number(result[key])
@@ -83,7 +83,7 @@ class DynamoCandidateEventRepository:
                 time.sleep(0.05 * (2 ** attempt))
         if pending:
             raise RuntimeError("DynamoDB returned unprocessed event feature keys")
-        allowed = ("blind_spot", "sensor_comparison", "exposure", "replay_timeline", "environmental_analysis")
+        allowed = ("blind_spot", "monitoring_coverage", "historical_context", "sensor_comparison", "exposure", "replay_timeline", "environmental_analysis")
         result = {}
         for item in items:
             context = {key: _plain_number(item[key]) for key in allowed if key in item}

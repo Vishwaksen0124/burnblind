@@ -199,6 +199,10 @@ class WeatherObservation:
     wind_direction_degrees: float | None
     source: str
     source_version: str
+    temperature_c: float | None = None
+    relative_humidity_percent: float | None = None
+    precipitation_mm: float | None = None
+    cloud_cover_percent: float | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "observed_at_utc", _timestamp(self.observed_at_utc, "observed_at_utc"))
@@ -210,6 +214,14 @@ class WeatherObservation:
         if self.wind_direction_degrees is not None:
             if isinstance(self.wind_direction_degrees, bool) or not isinstance(self.wind_direction_degrees, (int, float)) or not math.isfinite(self.wind_direction_degrees) or not 0 <= self.wind_direction_degrees < 360:
                 raise ContractError("wind_direction_degrees must be in [0, 360)")
+        if self.temperature_c is not None and not isinstance(self.temperature_c, (int, float)):
+            raise ContractError("temperature_c must be numeric when provided")
+        if self.relative_humidity_percent is not None and not 0 <= self.relative_humidity_percent <= 100:
+            raise ContractError("relative_humidity_percent must be in [0, 100]")
+        if self.precipitation_mm is not None:
+            _nonnegative(self.precipitation_mm, "precipitation_mm")
+        if self.cloud_cover_percent is not None and not 0 <= self.cloud_cover_percent <= 100:
+            raise ContractError("cloud_cover_percent must be in [0, 100]")
 
 
 @dataclass(frozen=True, slots=True)

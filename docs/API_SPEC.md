@@ -69,9 +69,12 @@ Returns latest investigation if available.
 
 ## Environmental analysis
 
-`POST /events/{event_id}/environmental-analysis` requires the reviewer JWT.
-It enqueues deterministic event-time weather, potential-exposure, and attached
-sensor-comparison enrichment. It does not invoke the Investigation Agent.
+New events are automatically queued for environmental analysis. The
+`POST /events/{event_id}/environmental-analysis` route requires the reviewer
+JWT and is an idempotent retry/reprocess action. It enqueues deterministic
+weather, historical-context, exposure, coverage, and sensor-comparison
+enrichment. It does not calculate core scores or invoke the Investigation
+Agent.
 The request returns `202` with `status: PROCESSING`; poll the read endpoint for
 completion:
 
@@ -91,8 +94,9 @@ attached. Missing second-sensor data is never interpreted as a non-detection.
 
 Explicitly requests an analyst override investigation for an existing
 candidate. It returns `202` with the queue status. A completed investigation
-is deduplicated for that event; failed work can be retried. Qualifying score
-updates are also queued automatically by the DynamoDB stream trigger.
+is deduplicated for that event; failed work can be retried. Scoring
+qualification is recorded first; a reviewer explicitly decides whether to
+request the investigation.
 
 ```json
 {
@@ -111,13 +115,11 @@ are advisory and require human review.
 ## Automatic qualification
 
 When an event record receives normalized `score_features`, the stream worker
-applies `config/scoring.v1.json`. It queues investigations for high priority,
-high uncertainty with at least one supported fire-likelihood feature, high
-blindness with moderate fire likelihood, or high exposure. A record with no
-usable evidence does not qualify from missingness alone. The worker stores the
-score snapshot, policy version, and trigger reasons with the investigation.
-The feature producer is responsible for writing validated feature inputs;
-candidate rows without them remain unassessed and are not auto-enqueued.
+applies `config/scoring.v1.json`. A record with no usable evidence does not
+qualify from missingness alone. The worker stores the score snapshot, policy
+version, and trigger reasons with the investigation. The feature producer is
+responsible for writing validated feature inputs; candidate rows without them
+remain unassessed and are not auto-enqueued.
 
 ## Error format
 
