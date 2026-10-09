@@ -14,9 +14,11 @@ export default function EventDetail({ event, onClose, initialTab = 'event' }) {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('event');
   const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
   const [reviewOutcome, setReviewOutcome] = useState('NEEDS_VERIFICATION');
   const [reviewNotes, setReviewNotes] = useState('');
   const [reviewBusy, setReviewBusy] = useState(false);
+  const [addingAnotherReview, setAddingAnotherReview] = useState(false);
   const [reviewError, setReviewError] = useState('');
   const [sensorComparison, setSensorComparison] = useState(null);
   const [exposure, setExposure] = useState(null);
@@ -44,6 +46,7 @@ export default function EventDetail({ event, onClose, initialTab = 'event' }) {
     setLoading(true);
     setRecord(null);
     setReviews([]);
+    setReviewsLoading(true);
     setReviewError('');
     setSensorComparison(null);
     setExposure(null);
@@ -51,7 +54,8 @@ export default function EventDetail({ event, onClose, initialTab = 'event' }) {
     poll();
     getReviewOutcomes(event.event_id, controller.signal)
       .then((value) => setReviews(value.items || []))
-      .catch((err) => { if (err.name !== 'AbortError') setReviewError(err.message); });
+      .catch((err) => { if (err.name !== 'AbortError') setReviewError(err.message); })
+      .finally(() => { if (!controller.signal.aborted) setReviewsLoading(false); });
     getSensorComparison(event.event_id, controller.signal)
       .then(setSensorComparison)
       .catch((err) => { if (err.name !== 'AbortError') setSensorComparison({ status: 'ERROR', reason: err.message }); });
@@ -91,6 +95,7 @@ export default function EventDetail({ event, onClose, initialTab = 'event' }) {
       const value = await submitReviewOutcome(event.event_id, reviewOutcome, reviewNotes, reviewerAuth.session.token);
       setReviews((current) => [value.review, ...current]);
       setReviewNotes('');
+      setAddingAnotherReview(false);
     } catch (err) {
       setReviewError(err.message);
     } finally {
@@ -146,14 +151,15 @@ export default function EventDetail({ event, onClose, initialTab = 'event' }) {
       {report && <InvestigationFindings report={report} />}
       <section className="human-review" aria-labelledby="human-review-title">
         <div className="human-review-heading"><div><p className="eyebrow">HUMAN REVIEW</p><h4 id="human-review-title">Record an outcome</h4></div><span>{reviewerAuth.session ? `SIGNED IN · ${reviewerAuth.session.email}` : 'INVITED REVIEWER ACCESS REQUIRED'}</span></div>
-        {reviews.length > 0 && <p className="latest-review">Latest outcome: <strong>{reviews[0].outcome.replaceAll('_', ' ')}</strong>{reviews[0].reviewed_at_utc && <time dateTime={reviews[0].reviewed_at_utc}> · {formatTimestamp(reviews[0].reviewed_at_utc)}</time>}</p>}
+        {reviewsLoading && <p className="report-note">Checking saved human review…</p>}
+        {reviews.length > 0 && <div className="latest-review" role="status"><p>Review outcome saved: <strong>{reviews[0].outcome.replaceAll('_', ' ')}</strong>{reviews[0].reviewed_at_utc && <time dateTime={reviews[0].reviewed_at_utc}> · {formatTimestamp(reviews[0].reviewed_at_utc)}</time>}</p>{reviews[0].notes && reviewerAuth.session && <blockquote>{reviews[0].notes}</blockquote>}{!addingAnotherReview && <button type="button" className="secondary-button" onClick={() => setAddingAnotherReview(true)}>Add another outcome</button>}</div>}
         {reviewError && <p className="report-error" role="alert">Review history unavailable: {reviewError}</p>}
         {!reviewerAuth.session && <p className="reviewer-required">Human review submissions are restricted to invited BurnBlind reviewers. <button type="button" className="text-button" onClick={() => reviewerAuth.openSignIn('Sign in to save a review outcome for this event.')}>Sign in</button></p>}
-        <form onSubmit={saveReview}>
+        {(!reviewsLoading && reviews.length === 0 || addingAnotherReview) && <form onSubmit={saveReview}>
           <label>Outcome<select value={reviewOutcome} onChange={(change) => setReviewOutcome(change.target.value)}><option value="NEEDS_VERIFICATION">Needs verification</option><option value="CONFIRMED">Confirmed by reviewer</option><option value="FALSE_POSITIVE">False positive</option><option value="INSUFFICIENT_EVIDENCE">Insufficient evidence</option></select></label>
           <label>Notes <span>(optional)</span><textarea value={reviewNotes} onChange={(change) => setReviewNotes(change.target.value)} maxLength={1000} rows={2} placeholder="Add a short source-backed note" /></label>
           <button className="action-button" type="submit" disabled={reviewBusy || !reviewerAuth.session}>{reviewBusy ? 'Saving…' : 'Save review outcome'}</button>
-        </form>
+        </form>}
       </section>
     </div>
     </div>

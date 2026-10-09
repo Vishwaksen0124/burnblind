@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { getEvent, getInvestigations } from '../api.js';
+import { getInvestigations } from '../api.js';
 import { PageHeading, StateMessage } from './shared.jsx';
-import EventDetail from './EventDetail.jsx';
 
 const PIPELINE = [
   { number: '01', title: 'Observe', copy: 'Start with a source record and preserve its timestamp, coordinates, sensor and provenance.', input: 'GK2A AMI historical replay', result: 'Normalized observations in UTC and a shared 5 km grid', state: 'Active in replay' },
@@ -54,11 +53,8 @@ export function InvestigationsPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const [reviewLoadingId, setReviewLoadingId] = useState('');
-  const [reviewLoadError, setReviewLoadError] = useState('');
+  const [filter, setFilter] = useState('ALL');
   const [expandedReports, setExpandedReports] = useState(() => new Set());
-  const eventReviewRef = useRef(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -71,10 +67,6 @@ export function InvestigationsPage() {
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [retry]);
-
-  useEffect(() => {
-    if (selectedEvent) eventReviewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [selectedEvent]);
 
   async function loadMore() {
     if (!nextCursor || loadingMore) return;
@@ -91,30 +83,38 @@ export function InvestigationsPage() {
     }
   }
 
-  async function openEventReview(eventId) {
-    setReviewLoadingId(eventId);
-    setReviewLoadError('');
-    try {
-      const event = await getEvent(eventId);
-      setSelectedEvent(event);
-    } catch (cause) {
-      setReviewLoadError(cause.message || 'Event details are unavailable.');
-    } finally {
-      setReviewLoadingId('');
-    }
-  }
+  const visibleItems = items.filter((item) => {
+    const reviewed = Boolean(item.latest_review);
+    if (filter === 'REVIEW') return reviewed;
+    if (filter === 'REQUIRES_REVIEW') return !reviewed && ['COMPLETED', 'FAILED'].includes(item.status);
+    if (filter === 'NOT_REVIEWED') return !reviewed && ['QUEUED', 'RUNNING'].includes(item.status);
+    return true;
+  });
 
   return <>
-    <PageHeading eyebrow="SAVED EVIDENCE REVIEWS" title="Investigations">The Action Center is the candidate queue on Monitoring. This page contains reports already queued or completed. Open a full report to inspect its evidence and uncertainty, or open the event review to retry a failed investigation or record a human outcome. Saving an outcome requires invited reviewer sign-in.</PageHeading>
+    <PageHeading eyebrow="INVESTIGATION REPORTS · HUMAN DECISIONS" title="Investigations">Review every queued report and human decision in one place. Open a candidate to read the complete evidence and record or update its outcome.</PageHeading>
     {loading && <StateMessage title="Loading investigations">Reading persisted review records.</StateMessage>}
     {error && !loading && <StateMessage title="Investigation data unavailable">{error} <button className="text-button" onClick={() => setRetry((value) => value + 1)}>Retry</button></StateMessage>}
     {!loading && !error && items.length === 0 && <StateMessage title="No investigations yet">Request an investigation from a candidate event. Completed reports will appear here.</StateMessage>}
-    {!loading && !error && items.length > 0 && <section className="investigation-list" aria-label="Investigation reports">
-      {items.map((item) => {
+    {!loading && !error && items.length > 0 && <>
+      <nav className="investigation-filters" aria-label="Filter investigations">
+        {[
+          ['ALL', 'All investigations'],
+          ['REVIEW', 'Reviewed'],
+          ['REQUIRES_REVIEW', 'Requires review'],
+          ['NOT_REVIEWED', 'Not reviewed'],
+        ].map(([value, label]) => <button key={value} type="button" className={`filter-button${filter === value ? ' active' : ''}`} aria-pressed={filter === value} onClick={() => setFilter(value)}>{label}<span>{items.filter((item) => {
+          const reviewed = Boolean(item.latest_review);
+          return value === 'ALL' || (value === 'REVIEW' && reviewed) || (value === 'REQUIRES_REVIEW' && !reviewed && ['COMPLETED', 'FAILED'].includes(item.status)) || (value === 'NOT_REVIEWED' && !reviewed && ['QUEUED', 'RUNNING'].includes(item.status));
+        }).length}</span></button>)}
+      </nav>
+      <section className="investigation-list" aria-label="Investigation reports">
+      {visibleItems.map((item) => {
         const expanded = expandedReports.has(item.event_id);
+        const reviewed = Boolean(item.latest_review);
         const recommendations = item.investigation?.recommendations || (item.investigation?.recommended_action ? [item.investigation.recommended_action] : []);
         return <article className="investigation-card panel" key={item.event_id}>
-        <header><div><p className="eyebrow">{item.investigation?.classification?.replaceAll('_', ' ') || item.status?.replaceAll('_', ' ')}</p><h2>Evidence review for this candidate</h2></div><span className={`investigation-status status-${item.status?.toLowerCase()}`}>{item.status?.replaceAll('_', ' ')}</span></header>
+        <header><div><p className="eyebrow">{reviewed ? 'HUMAN REVIEW SAVED' : item.investigation?.classification?.replaceAll('_', ' ') || item.status?.replaceAll('_', ' ')}</p><h2>{reviewed ? item.latest_review.outcome.replaceAll('_', ' ') : 'Evidence review for this candidate'}</h2></div><span className={`investigation-status status-${reviewed ? 'completed' : item.status?.toLowerCase()}`}>{reviewed ? 'REVIEWED' : item.status?.replaceAll('_', ' ')}</span></header>
         <p className="investigation-event-reference">Event reference <code>{item.event_id}</code></p>
         {item.investigation?.summary && <p className="investigation-card-summary">{item.investigation.summary}</p>}
         {item.investigation && <>
@@ -125,18 +125,17 @@ export function InvestigationsPage() {
         {item.investigation && <>
           <div className="investigation-card-actions">
             <button className="secondary-button report-toggle" type="button" aria-expanded={expanded} onClick={() => setExpandedReports((current) => { const next = new Set(current); if (next.has(item.event_id)) next.delete(item.event_id); else next.add(item.event_id); return next; })}>{expanded ? <>Hide report <ChevronUp aria-hidden="true" /></> : <>View full report <ChevronDown aria-hidden="true" /></>}</button>
-            <button className="action-button" type="button" disabled={reviewLoadingId === item.event_id} onClick={() => openEventReview(item.event_id)}>{reviewLoadingId === item.event_id ? 'Loading event…' : 'Open event review'}</button>
+            <a className="action-button" href={`#investigations/${item.event_id}`}>{reviewed ? 'View saved review' : 'Review this candidate'}</a>
           </div>
           {expanded && <InvestigationReportDetails report={item.investigation} />}
         </>}
-        {!item.investigation && <div className="investigation-card-actions"><button className="action-button" type="button" disabled={reviewLoadingId === item.event_id} onClick={() => openEventReview(item.event_id)}>{reviewLoadingId === item.event_id ? 'Loading event…' : item.status === 'FAILED' ? 'Open event and retry' : 'Open event review'}</button></div>}
-        <footer><span>Requested {formatDate(item.requested_at_utc)}</span>{item.completed_at_utc && <span>Completed {formatDate(item.completed_at_utc)}</span>}<span>{item.model_id || 'Model metadata unavailable'}</span></footer>
+        {!item.investigation && <div className="investigation-card-actions"><a className="action-button" href={`#investigations/${item.event_id}`}>{item.status === 'FAILED' ? 'Open event and retry' : 'Open dedicated review'}</a></div>}
+        <footer><span>Requested {formatDate(item.requested_at_utc)}</span>{item.completed_at_utc && <span>Completed {formatDate(item.completed_at_utc)}</span>}{reviewed && <span>Outcome saved {formatDate(item.latest_review.reviewed_at_utc)}</span>}<span>{item.model_id || 'Model metadata unavailable'}</span></footer>
       </article>;
       })}
+      {visibleItems.length === 0 && <StateMessage title="No candidates in this category">Choose another review category to see its reports.</StateMessage>}
       {nextCursor && <button className="action-button investigation-load-more" disabled={loadingMore} onClick={loadMore}>{loadingMore ? 'Loading…' : 'Load more investigations'}</button>}
-    </section>}
-    {reviewLoadError && <StateMessage title="Event review unavailable">{reviewLoadError}</StateMessage>}
-    {selectedEvent && <div ref={eventReviewRef}><EventDetail event={selectedEvent} initialTab="investigation" onClose={() => setSelectedEvent(null)} /></div>}
+    </section></>}
   </>;
 }
 
