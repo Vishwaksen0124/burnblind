@@ -201,6 +201,7 @@ Resources:
                   - lambda:TagResource
                   - lambda:UntagResource
                   - logs:CreateLogGroup
+                  - logs:DescribeLogGroups
                   - logs:DeleteLogGroup
                   - logs:PutRetentionPolicy
                   - logs:DeleteRetentionPolicy
