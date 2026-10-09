@@ -74,6 +74,12 @@ Normalize each component before combining.
 
 Do not claim this formula is scientifically validated merely because it produces a useful ranking.
 
+When required components are unavailable, the system may expose a clearly
+labelled `PROVISIONAL_MISSING_COMPONENTS` priority using only the available
+fire-likelihood and exposure components. This is a triage aid, not the final
+priority formula. Final priority remains unavailable until blindness and
+urgency inputs are present.
+
 ## 6. Validation
 
 The released GK2A dataset and FIRMS observations are observational/reference data, not perfect ground truth.

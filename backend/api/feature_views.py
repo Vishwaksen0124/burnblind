@@ -33,7 +33,7 @@ def action_center(repository: Any, limit: int, cursor: str | None) -> dict[str, 
             "trigger_reasons": reasons,
         })
     order = {"REQUIRES_REVIEW": 0, "MORE_EVIDENCE_NEEDED": 1, "LOW_PRIORITY": 2}
-    entries.sort(key=lambda item: (order[item["bucket"]], -(item["event"].get("priority_score") or 0), item["event"]["detected_at_utc"]))
+    entries.sort(key=lambda item: (order[item["bucket"]], -(item["event"].get("priority_score") or item["event"].get("provisional_priority_score") or 0), item["event"]["detected_at_utc"]))
     return {
         "items": entries,
         "counts": {bucket: sum(item["bucket"] == bucket for item in entries) for bucket in order},

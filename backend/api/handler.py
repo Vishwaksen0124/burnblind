@@ -99,6 +99,8 @@ def _event_payload(event, assessment: Mapping[str, Any] | None = None) -> dict[s
             "fire_likelihood": None,
             "uncertainty": None,
             "priority_score": None,
+                "provisional_priority_score": None,
+                "priority_status": "UNAVAILABLE",
             "investigation_status": "NOT_AVAILABLE",
             "score_status": "AWAITING_REQUIRED_FEATURES",
         }
@@ -110,6 +112,8 @@ def _event_payload(event, assessment: Mapping[str, Any] | None = None) -> dict[s
                 "fire_likelihood": assessment.get("fire_likelihood_score"),
                 "uncertainty": assessment.get("uncertainty"),
                 "priority_score": assessment.get("priority_score"),
+                "provisional_priority_score": assessment.get("provisional_priority_score"),
+                "priority_status": assessment.get("priority_status", "UNAVAILABLE"),
                 "score_status": "HEURISTIC_SCORES_AVAILABLE",
                 "score_version": assessment.get("score_version"),
                 "feature_version": assessment.get("feature_version"),

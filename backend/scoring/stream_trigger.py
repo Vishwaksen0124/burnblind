@@ -32,8 +32,26 @@ def evaluate_score_features(payload: dict[str, Any], config_path: str | Path = _
         "fire_likelihood_score": result.fire_likelihood_score,
         "uncertainty": result.uncertainty,
         "priority_score": result.priority_score,
+        "provisional_priority_score": _provisional_priority(result.fire_likelihood_score, features.exposure_score, result.priority_score),
+        "priority_status": _priority_status(result.priority_score, result.fire_likelihood_score, features.exposure_score),
         "evidence_completeness": result.evidence_completeness,
     }
+
+
+def _provisional_priority(likelihood: float | None, exposure: float | None, final: float | None) -> float | None:
+    if final is not None:
+        return final
+    if likelihood is None or exposure is None:
+        return None
+    return float(likelihood) * float(exposure)
+
+
+def _priority_status(final: float | None, likelihood: float | None, exposure: float | None) -> str:
+    if final is not None:
+        return "FINAL"
+    if likelihood is not None and exposure is not None:
+        return "PROVISIONAL_MISSING_COMPONENTS"
+    return "UNAVAILABLE"
 
 
 def lambda_handler(event, context):
@@ -85,6 +103,7 @@ def _persist_evaluation(table, event_id: str, fingerprint: str, decision: dict[s
         "investigation_qualifies": decision["should_investigate"],
         "investigation_status": "AWAITING_HUMAN_REVIEW" if decision["should_investigate"] else "NOT_REQUIRED",
         "investigation_trigger_reasons": decision["reasons"],
+        "priority_status": decision["priority_status"],
         "score_version": decision["score_version"],
         "feature_version": decision["feature_version"],
         "evidence_completeness": Decimal(str(decision["evidence_completeness"])),
@@ -92,6 +111,8 @@ def _persist_evaluation(table, event_id: str, fingerprint: str, decision: dict[s
     for key in ("blindness_score", "fire_likelihood_score", "uncertainty", "priority_score"):
         if decision[key] is not None:
             values[key] = Decimal(str(decision[key]))
+    if decision["provisional_priority_score"] is not None:
+        values["provisional_priority_score"] = Decimal(str(decision["provisional_priority_score"]))
     assignments = []
     names = {}
     expression_values = {}
