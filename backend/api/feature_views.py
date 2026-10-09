@@ -17,9 +17,11 @@ LAYER_FIELDS = {
 def action_center(repository: Any, limit: int, cursor: str | None) -> dict[str, Any]:
     events, next_cursor = repository.list(_empty_filters(), limit, cursor)
     score_reader = getattr(repository, "get_scoring_context", None)
+    batch_score_reader = getattr(repository, "get_scoring_contexts", None)
+    assessments = batch_score_reader([event.event_id for event in events]) if batch_score_reader else {}
     entries = []
     for event in events:
-        assessment = score_reader(event.event_id) if score_reader else None
+        assessment = assessments.get(event.event_id) if batch_score_reader else score_reader(event.event_id) if score_reader else None
         reasons = list((assessment or {}).get("investigation_trigger_reasons", []))
         if reasons:
             bucket = "REQUIRES_REVIEW"
