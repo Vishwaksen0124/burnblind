@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Least-privilege GitHub Actions OIDC role for BurnBlind Amplify deployments.
+Description: Repository-scoped GitHub OIDC roles for BurnBlind frontend and backend deployments.
 
 Parameters:
   GitHubOwner:
@@ -20,8 +20,83 @@ Parameters:
   AmplifyBranch:
     Type: String
     Default: main
+  BackendStackName:
+    Type: String
+    Default: burnblind-replay
+  SamArtifactsBucket:
+    Type: String
+    Default: aws-sam-cli-managed-default-samclisourcebucket-fdyzaf60ajov
 
 Resources:
+  BurnBlindRuntimePermissionsBoundary:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: BurnBlindRuntimeBoundary
+      Description: Maximum permissions available to BurnBlind Lambda execution roles.
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ReplayTableOperations
+            Effect: Allow
+            Action:
+              - dynamodb:DescribeTable
+              - dynamodb:GetItem
+              - dynamodb:BatchGetItem
+              - dynamodb:Query
+              - dynamodb:Scan
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:DeleteItem
+              - dynamodb:BatchWriteItem
+              - dynamodb:DescribeStream
+              - dynamodb:GetRecords
+              - dynamodb:GetShardIterator
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/burnblind-replay-*'
+              - !Sub 'arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/burnblind-replay-*/index/*'
+              - !Sub 'arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/burnblind-replay-*/stream/*'
+          - Sid: ListReplayStreams
+            Effect: Allow
+            Action: dynamodb:ListStreams
+            Resource: '*'
+          - Sid: ReplayQueueOperations
+            Effect: Allow
+            Action:
+              - sqs:SendMessage
+              - sqs:ReceiveMessage
+              - sqs:DeleteMessage
+              - sqs:ChangeMessageVisibility
+              - sqs:GetQueueAttributes
+              - sqs:GetQueueUrl
+            Resource: !Sub 'arn:${AWS::Partition}:sqs:${AWS::Region}:${AWS::AccountId}:burnblind-replay-*'
+          - Sid: LambdaLogging
+            Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/burnblind-replay-*'
+              - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/burnblind-replay-*:*'
+          - Sid: BedrockMantleAndModelInvocation
+            Effect: Allow
+            Action:
+              - bedrock:InvokeModel
+              - bedrock:InvokeModelWithResponseStream
+              - bedrock-mantle:CreateInference
+              - bedrock-mantle:CallWithBearerToken
+            Resource: '*'
+          - Sid: OptionalSageMakerProvider
+            Effect: Allow
+            Action: sagemaker:InvokeEndpoint
+            Resource: !Sub 'arn:${AWS::Partition}:sagemaker:${AWS::Region}:${AWS::AccountId}:endpoint/burnblind-*'
+          - Sid: XRayTracing
+            Effect: Allow
+            Action:
+              - xray:PutTraceSegments
+              - xray:PutTelemetryRecords
+            Resource: '*'
+
   GitHubActionsOidcProvider:
     Type: AWS::IAM::OIDCProvider
     Properties:
@@ -66,8 +141,185 @@ Resources:
                 Action: amplify:GetJob
                 Resource: !Sub 'arn:${AWS::Partition}:amplify:${AWS::Region}:${AWS::AccountId}:apps/${AmplifyAppId}/branches/${AmplifyBranch}/jobs/*'
 
+  BurnBlindCloudFormationExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: burnblind-sam-execution
+      Description: CloudFormation execution role limited to resources in the BurnBlind replay stack.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: DeployBurnBlindReplayStackResources
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ManageReplayTablesAndQueue
+                Effect: Allow
+                Action:
+                  - dynamodb:CreateTable
+                  - dynamodb:UpdateTable
+                  - dynamodb:DeleteTable
+                  - dynamodb:DescribeTable
+                  - dynamodb:DescribeContinuousBackups
+                  - dynamodb:UpdateContinuousBackups
+                  - dynamodb:DescribeTimeToLive
+                  - dynamodb:UpdateTimeToLive
+                  - dynamodb:TagResource
+                  - dynamodb:UntagResource
+                  - dynamodb:ListTagsOfResource
+                  - sqs:CreateQueue
+                  - sqs:DeleteQueue
+                  - sqs:GetQueueAttributes
+                  - sqs:SetQueueAttributes
+                  - sqs:TagQueue
+                  - sqs:UntagQueue
+                Resource: '*'
+              - Sid: ManageReplayFunctionsAndLogs
+                Effect: Allow
+                Action:
+                  - lambda:CreateFunction
+                  - lambda:UpdateFunctionCode
+                  - lambda:UpdateFunctionConfiguration
+                  - lambda:DeleteFunction
+                  - lambda:GetFunction
+                  - lambda:GetFunctionConfiguration
+                  - lambda:AddPermission
+                  - lambda:RemovePermission
+                  - lambda:CreateEventSourceMapping
+                  - lambda:UpdateEventSourceMapping
+                  - lambda:DeleteEventSourceMapping
+                  - lambda:GetEventSourceMapping
+                  - lambda:TagResource
+                  - lambda:UntagResource
+                  - logs:CreateLogGroup
+                  - logs:DeleteLogGroup
+                  - logs:PutRetentionPolicy
+                  - logs:DeleteRetentionPolicy
+                  - logs:TagResource
+                  - logs:UntagResource
+                Resource: '*'
+              - Sid: ManageReplayApiAndArtifactBucket
+                Effect: Allow
+                Action:
+                  - apigateway:GET
+                  - apigateway:POST
+                  - apigateway:PUT
+                  - apigateway:PATCH
+                  - apigateway:DELETE
+                  - s3:CreateBucket
+                  - s3:DeleteBucket
+                  - s3:GetBucketLocation
+                  - s3:GetBucketPublicAccessBlock
+                  - s3:PutBucketPublicAccessBlock
+                  - s3:GetEncryptionConfiguration
+                  - s3:PutEncryptionConfiguration
+                  - s3:GetBucketVersioning
+                  - s3:PutBucketVersioning
+                  - s3:PutBucketTagging
+                  - s3:GetBucketTagging
+                Resource: '*'
+              - Sid: ManageStackRolesAndPassOnlyRuntimeRoles
+                Effect: Allow
+                Action:
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:PutRolePermissionsBoundary
+                  - iam:GetRole
+                  - iam:UpdateAssumeRolePolicy
+                  - iam:PutRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:GetRolePolicy
+                  - iam:AttachRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:ListRolePolicies
+                  - iam:ListAttachedRolePolicies
+                  - iam:TagRole
+                  - iam:UntagRole
+                  - iam:PassRole
+                Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/burnblind-replay-*'
+                Condition:
+                  ArnEquals:
+                    iam:PermissionsBoundary: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/BurnBlindRuntimeBoundary'
+              - Sid: ReadDeploymentArtifacts
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:ListBucket
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:s3:::${SamArtifactsBucket}'
+                  - !Sub 'arn:${AWS::Partition}:s3:::${SamArtifactsBucket}/*'
+
+  GitHubActionsBackendRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Allows only this repository main branch to deploy the named BurnBlind SAM stack.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Ref GitHubActionsOidcProvider
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub 'repo:${GitHubOwner}@${GitHubOwnerId}/${GitHubRepository}@${GitHubRepositoryId}:ref:refs/heads/${AmplifyBranch}'
+      Policies:
+        - PolicyName: DeployOnlyBurnBlindBackendStack
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ManageOnlyConfiguredStack
+                Effect: Allow
+                Action:
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:DeleteChangeSet
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:DescribeStacks
+                  - cloudformation:GetTemplate
+                  - cloudformation:ListStackResources
+                  - cloudformation:DescribeStackEvents
+                Resource: !Sub 'arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${BackendStackName}/*'
+              - Sid: ReadOnlyCloudFormationValidation
+                Effect: Allow
+                Action:
+                  - cloudformation:GetTemplateSummary
+                  - cloudformation:ValidateTemplate
+                Resource: '*'
+              - Sid: PassOnlyBurnBlindExecutionRole
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !GetAtt BurnBlindCloudFormationExecutionRole.Arn
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: cloudformation.amazonaws.com
+              - Sid: UploadOnlyToSamArtifactsBucket
+                Effect: Allow
+                Action:
+                  - s3:GetBucketLocation
+                  - s3:ListBucket
+                Resource: !Sub 'arn:${AWS::Partition}:s3:::${SamArtifactsBucket}'
+              - Sid: WriteOnlySamDeploymentArtifacts
+                Effect: Allow
+                Action:
+                  - s3:AbortMultipartUpload
+                  - s3:PutObject
+                  - s3:PutObjectTagging
+                Resource: !Sub 'arn:${AWS::Partition}:s3:::${SamArtifactsBucket}/*'
+
 Outputs:
   GitHubActionsRoleArn:
     Value: !GetAtt GitHubActionsAmplifyRole.Arn
   GitHubOidcProviderArn:
     Value: !Ref GitHubActionsOidcProvider
+  GitHubActionsBackendRoleArn:
+    Value: !GetAtt GitHubActionsBackendRole.Arn
+  BurnBlindCloudFormationExecutionRoleArn:
+    Value: !GetAtt BurnBlindCloudFormationExecutionRole.Arn

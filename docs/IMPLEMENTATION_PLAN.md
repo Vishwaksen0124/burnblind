@@ -26,7 +26,7 @@ This is the master execution checklist. Follow the order.
 - [x] Frontend application (map-first historical replay dashboard)
 - [ ] Linting/formatting
 - [x] Test runner configuration
-- [x] CI skeleton prepared (`.github/workflows/amplify-deploy.yml`; GitHub repo and AWS OIDC role setup pending)
+- [x] Frontend and backend CI/CD workflows use repository-scoped AWS OIDC roles (`.github/workflows/amplify-deploy.yml`, `.github/workflows/backend-deploy.yml`)
 - [x] README updated with the current implementation and local data workflow
 
 ## Phase 2 — Data contracts FIRST
@@ -296,7 +296,8 @@ Source assembly happens before model invocation. The model receives only the eve
 - [x] deployed health, summary, event list, CORS, and investigation gate verified
 - [x] CORS allows only the Amplify and local Vite origins
 - [x] public Amplify dashboard deployed and returned HTTP 200
-- [ ] Deploy the latest SAM backend changes through an approved deployment role
+- [x] Dedicated backend GitHub OIDC deploy role and CloudFormation runtime boundary provisioned
+- [ ] First automated SAM backend deployment and cloud smoke test
 
 ## Phase 19 — End-to-end
 

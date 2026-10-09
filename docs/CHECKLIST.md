@@ -131,9 +131,9 @@
 - [x] Confirmed the built Event API includes backend/processing; the investigator includes backend/impact and backend/processing
 - [x] Frontend includes live-loaded replay distribution, source counts, source limitations, investigation input/output documentation, review outcomes, and replay controls
 - [ ] Backend changes deployed and smoke-tested against AWS
-- [ ] CI/CD role expanded with a dedicated least-privilege SAM deployment role
+- [x] CI/CD role expanded with a repository/branch-scoped SAM deployment role and runtime permissions boundary
 - [ ] NASA FIRMS MAP_KEY stored in AWS Secrets Manager and historical comparison records acquired
 - [ ] Live model invocation and investigation verified after AWS role setup
 - [ ] Historical context and observation-coverage records attached to replay events before publishing score or blindness layers
 
-**Release note:** the currently available GitHub OIDC role is scoped to Amplify publishing only. The renewed local AWS CLI identity resolves to the account root user, so it is not used to deploy backend changes. Switch to an approved deployment role before changing AWS resources. No FIRMS key was found in the repository or GitHub secrets; provide only its Secrets Manager ARN/name, never the key value in chat.
+**Release note:** frontend and backend use separate GitHub OIDC roles scoped to this repository's `main` branch. The backend deploy role can update only `burnblind-replay` and pass the dedicated CloudFormation execution role. Lambda roles receive the `BurnBlindRuntimeBoundary` permissions boundary. Backend deployment through this workflow is still pending the first CI run. No FIRMS key was found in Secrets Manager or GitHub secrets; provide only its Secrets Manager ARN/name, never the key value in chat.

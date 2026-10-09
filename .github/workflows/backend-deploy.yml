@@ -1,0 +1,84 @@
+name: Backend CI/CD
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'config/**'
+      - 'infrastructure/sam/**'
+      - 'Makefile'
+      - 'pyproject.toml'
+      - 'tests/**'
+      - '.github/workflows/backend-deploy.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'config/**'
+      - 'infrastructure/sam/**'
+      - 'Makefile'
+      - 'pyproject.toml'
+      - 'tests/**'
+      - '.github/workflows/backend-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: us-east-2
+      BACKEND_STACK_NAME: burnblind-replay
+      SAM_ARTIFACTS_BUCKET: aws-sam-cli-managed-default-samclisourcebucket-fdyzaf60ajov
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install backend and test dependencies
+        run: python -m pip install -e '.[dev,aws]'
+
+      - name: Run backend unit tests
+        run: pytest -q
+
+      - name: Validate SAM template
+        run: sam validate --lint --template-file infrastructure/sam/template.yaml
+
+      - name: Build Lambda artifacts
+        run: sam build --template-file infrastructure/sam/template.yaml
+
+      - name: Configure AWS credentials with GitHub OIDC
+        if: github.event_name != 'pull_request'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_BACKEND_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy BurnBlind backend stack
+        if: github.event_name != 'pull_request'
+        env:
+          CLOUDFORMATION_EXECUTION_ROLE_ARN: ${{ vars.BURNBLIND_CFN_EXECUTION_ROLE_ARN }}
+        run: >-
+          sam deploy
+          --template-file .aws-sam/build/template.yaml
+          --stack-name "$BACKEND_STACK_NAME"
+          --region "$AWS_REGION"
+          --s3-bucket "$SAM_ARTIFACTS_BUCKET"
+          --role-arn "$CLOUDFORMATION_EXECUTION_ROLE_ARN"
+          --capabilities CAPABILITY_IAM
+          --no-confirm-changeset
+          --no-fail-on-empty-changeset
+          --parameter-overrides
+          DashboardOrigin=https://main.d3k8g1d6au7814.amplifyapp.com
+          LocalDashboardOrigin=http://127.0.0.1:5173
+          InvestigationModelProvider=bedrock-mantle
+          DeepSeekModelId=deepseek.v3.2
+          SageMakerEndpointName=unset
