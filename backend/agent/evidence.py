@@ -91,7 +91,7 @@ def build_evidence_tools(
         records = evidence.list_for_event(event_id)
         observations = []
         for row in records:
-            if row.get("evidence_type") in {"WEATHER_ESTIMATE", "POPULATION_EXPOSURE_ESTIMATE", "SENSOR_COMPARISON"}:
+            if row.get("evidence_type") in {"WEATHER_ESTIMATE", "POPULATION_EXPOSURE_ESTIMATE", "SENSOR_COMPARISON", "SENSOR_COVERAGE"}:
                 continue
             timestamp = _parse_time(row.get("observed_at_utc"))
             if timestamp is None or not start <= timestamp <= end:
@@ -232,8 +232,22 @@ def build_evidence_tools(
         if event is None:
             return {"status": "NOT_FOUND", "event_id": event_id}
         records = evidence.list_for_event(event_id)
-        satellite_rows = [row for row in records if row.get("evidence_type") not in {"WEATHER_ESTIMATE", "POPULATION_EXPOSURE_ESTIMATE"} and row.get("source")]
-        sources = sorted({str(row.get("source")) for row in satellite_rows})
+        satellite_rows = [
+            row for row in records
+            if row.get("evidence_type") not in {
+                "WEATHER_ESTIMATE", "POPULATION_EXPOSURE_ESTIMATE", "SENSOR_COMPARISON", "SENSOR_COVERAGE"
+            }
+            and row.get("source")
+        ]
+        coverage_rows = [row for row in records if row.get("evidence_type") == "SENSOR_COVERAGE"]
+        sources = sorted(
+            {str(row["source"]) for row in satellite_rows}
+            | {
+                str(row.get("record", {}).get("source") or row.get("source"))
+                for row in coverage_rows
+                if row.get("record", {}).get("source") or row.get("source")
+            }
+        )
         if len(sources) < 2:
             return {
                 "status": "INDEPENDENT_OBSERVATION_UNAVAILABLE",
@@ -264,7 +278,13 @@ def build_evidence_tools(
                 continue
         primary_source = next((name for name in sources if name == event.sources[0]), sources[0])
         comparison_source = next(name for name in sources if name != primary_source)
-        coverage_records = [row.get("record", {}) for row in records if row.get("evidence_type") == "SENSOR_COVERAGE"]
+        coverage_records = [row.get("record", {}) for row in coverage_rows]
+        for row in coverage_rows:
+            record = row.get("record", {})
+            evidence_id = record.get("evidence_id") or row.get("observation_id")
+            source = record.get("source") or row.get("source")
+            if evidence_id and source:
+                registry[str(evidence_id)] = {"type": "SENSOR_COVERAGE", "source": str(source)}
         result = compare_sensor_observations(observations, primary_source, comparison_source, coverage_records=coverage_records)
         result["evidence_ids"] = sorted({
             evidence_id

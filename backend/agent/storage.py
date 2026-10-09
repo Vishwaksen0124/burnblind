@@ -76,13 +76,20 @@ class DynamoInvestigationStore:
             if score_snapshot is not None:
                 values[":score"] = _dynamo_safe(score_snapshot)
                 assignments.append("score_snapshot = :score")
-            self._table.update_item(
-                Key={"event_id": event.event_id},
-                UpdateExpression="SET " + ", ".join(assignments) + " REMOVE error_code, started_at_utc, completed_at_utc, report, model_id, agent_version, prompt_version",
-                ConditionExpression="#status = :failed",
-                ExpressionAttributeNames=names,
-                ExpressionAttributeValues=values,
-            )
+            try:
+                self._table.update_item(
+                    Key={"event_id": event.event_id},
+                    UpdateExpression="SET " + ", ".join(assignments) + " REMOVE error_code, started_at_utc, completed_at_utc, report, model_id, agent_version, prompt_version",
+                    ConditionExpression="#status = :failed",
+                    ExpressionAttributeNames=names,
+                    ExpressionAttributeValues=values,
+                )
+            except ClientError as update_exc:
+                if update_exc.response.get("Error", {}).get("Code") != "ConditionalCheckFailedException":
+                    raise
+                # Another request won the FAILED -> QUEUED transition after our
+                # read. Treat that request as the owner; never dispatch twice.
+                return self.get(event.event_id) or item, False
             return self.get(event.event_id) or item, True
 
     def set_running(self, event_id: str) -> None:

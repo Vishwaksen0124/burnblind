@@ -3,7 +3,10 @@ import json
 import sys
 from types import ModuleType, SimpleNamespace
 
-from backend.agent.report import EvidenceFinding, InvestigationReport
+import pytest
+from pydantic import ValidationError
+
+from backend.agent.report import EvidenceContradiction, EvidenceFinding, InvestigationReport
 from backend.agent.runtime import investigate_event
 from backend.api.repository import MemoryCandidateEventRepository
 from backend.common.models import CandidateEvent
@@ -30,10 +33,13 @@ def _event(event_id=EVENT_ID):
 
 
 class EvidenceRepository:
-    def __init__(self):
+    def __init__(self, records=None):
         self.derived = []
+        self.records = records
 
     def list_for_event(self, event_id, limit=100):
+        if self.records is not None:
+            return self.records
         return [{
             "observation_id": "obs_1",
             "event_id": event_id,
@@ -70,7 +76,7 @@ def test_investigation_is_scoped_and_cites_only_tool_returned_evidence(monkeypat
             assert structured_output_model is InvestigationReport
             assert EVENT_ID in prompt
             assert "obs_1" in prompt
-            assert "No second source observation is attached to this event." in prompt
+            assert "No independent source observation or validated coverage record is available." in prompt
             return SimpleNamespace(structured_output=report)
 
         return invoke
@@ -110,6 +116,52 @@ def test_report_rejects_evidence_ids_not_returned_by_tools(monkeypatch):
         assert "not returned by a tool" in str(exc)
     else:
         raise AssertionError("unverified evidence reference was accepted")
+
+
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"classification": "CONFIRMED"},
+        {"recommendations": ["EVACUATE"]},
+        {"recommendations": []},
+    ],
+)
+def test_structured_report_schema_rejects_unsupported_output(override):
+    values = {
+        "classification": "REVIEW_REQUIRED",
+        "summary": "A supplied candidate record needs evidence-based human review.",
+        "evidence": [],
+        "contradictions": [],
+        "missing_evidence": [],
+        "uncertainties": [],
+        "recommendations": ["HUMAN_VERIFICATION"],
+    }
+    values.update(override)
+
+    with pytest.raises(ValidationError):
+        InvestigationReport(**values)
+
+
+def test_absent_satellite_evidence_forces_insufficient_evidence(monkeypatch):
+    strands = ModuleType("strands")
+    strands.tool = lambda function: function
+    monkeypatch.setitem(sys.modules, "strands", strands)
+    report = InvestigationReport(
+        classification="REVIEW_REQUIRED",
+        summary="Context alone cannot establish whether a current event is present.",
+        evidence=[], contradictions=[], missing_evidence=[], uncertainties=[],
+        recommendations=["HUMAN_VERIFICATION"],
+    )
+    result = investigate_event(
+        EVENT_ID,
+        MemoryCandidateEventRepository([_event()]),
+        EvidenceRepository(records=[]),
+        agent_factory=lambda tools: lambda *_args, **_kwargs: SimpleNamespace(structured_output=report),
+    )
+
+    assert result["classification"] == "INSUFFICIENT_EVIDENCE"
+    assert "No satellite observation record was available for this event." in result["missing_evidence"]
+    assert "HUMAN_VERIFICATION" in result["recommendations"]
 
 
 def test_weather_and_population_are_preassembled_as_agent_input(monkeypatch):
@@ -162,3 +214,97 @@ def test_weather_and_population_are_preassembled_as_agent_input(monkeypatch):
     assert packet["exposure"]["method"] == "DIRECTIONAL_CORRIDOR"
     assert "event_id" not in result
     assert len(evidence.derived) == 2
+
+
+def test_sensor_agreement_is_not_reported_as_missing_or_disagreement(monkeypatch):
+    strands = ModuleType("strands")
+    strands.tool = lambda function: function
+    monkeypatch.setitem(sys.modules, "strands", strands)
+    records = [
+        {
+            "observation_id": "obs_1", "event_id": EVENT_ID, "evidence_type": "SATELLITE_DETECTION",
+            "source": "GK2A_AMI", "observed_at_utc": "2025-10-01T07:00:00Z",
+            "latitude": 30.9, "longitude": 75.85,
+        },
+        {
+            "observation_id": "viirs_1", "event_id": EVENT_ID, "evidence_type": "SATELLITE_DETECTION",
+            "source": "VIIRS", "observed_at_utc": "2025-10-01T07:05:00Z",
+            "latitude": 30.9, "longitude": 75.85,
+        },
+    ]
+    report = InvestigationReport(
+        classification="REVIEW_REQUIRED", summary="Two supplied satellite records match within the comparison window.",
+        evidence=[EvidenceFinding(evidence_id="obs_1", interpretation="A GK2A observation is attached.")],
+        contradictions=[], missing_evidence=[], uncertainties=[],
+        recommendations=["HUMAN_VERIFICATION", "REVIEW_SENSOR_DISAGREEMENT"],
+    )
+    captured = {}
+
+    def agent_factory(tools):
+        assert tools == []
+
+        def invoke(prompt, structured_output_model):
+            captured["packet"] = json.loads(prompt.split("Evidence packet (JSON):\n", 1)[1])
+            return SimpleNamespace(structured_output=report)
+
+        return invoke
+
+    result = investigate_event(
+        EVENT_ID, MemoryCandidateEventRepository([_event()]), EvidenceRepository(records), agent_factory=agent_factory,
+    )
+
+    assert captured["packet"]["sensor_comparison"]["status"] == "AGREEMENT"
+    assert "No independent source observation or validated coverage record is available." not in result["missing_evidence"]
+    assert "A usable cross-sensor comparison is unavailable." not in result["missing_evidence"]
+    assert "REVIEW_SENSOR_DISAGREEMENT" not in result["recommendations"]
+
+
+def test_quality_valid_negative_coverage_is_cited_as_disagreement(monkeypatch):
+    strands = ModuleType("strands")
+    strands.tool = lambda function: function
+    monkeypatch.setitem(sys.modules, "strands", strands)
+    records = [
+        {
+            "observation_id": "obs_1", "event_id": EVENT_ID, "evidence_type": "SATELLITE_DETECTION",
+            "source": "GK2A_AMI", "observed_at_utc": "2025-10-01T07:00:00Z",
+            "latitude": 30.9, "longitude": 75.85,
+        },
+        {
+            "observation_id": "coverage_row", "event_id": EVENT_ID, "evidence_type": "SENSOR_COVERAGE",
+            "source": "VIIRS", "observed_at_utc": "2025-10-01T07:05:00Z",
+            "latitude": 30.9, "longitude": 75.85,
+            "record": {
+                "evidence_id": "coverage_1", "source": "VIIRS", "observed_at_utc": "2025-10-01T07:05:00Z",
+                "latitude": 30.9, "longitude": 75.85, "coverage_radius_km": 1.5,
+                "quality_valid": True, "detection_present": False,
+            },
+        },
+    ]
+    report = InvestigationReport(
+        classification="REVIEW_REQUIRED", summary="A GK2A observation conflicts with explicit VIIRS coverage evidence.",
+        evidence=[EvidenceFinding(evidence_id="obs_1", interpretation="GK2A reports a supplied thermal observation.")],
+        contradictions=[EvidenceContradiction(
+            evidence_ids=["obs_1", "coverage_1"],
+            explanation="GK2A reports an observation while valid VIIRS coverage reports no matching detection.",
+        )], missing_evidence=[], uncertainties=[],
+        recommendations=["HUMAN_VERIFICATION", "REVIEW_SENSOR_DISAGREEMENT"],
+    )
+    captured = {}
+
+    def agent_factory(tools):
+        assert tools == []
+
+        def invoke(prompt, structured_output_model):
+            captured["packet"] = json.loads(prompt.split("Evidence packet (JSON):\n", 1)[1])
+            return SimpleNamespace(structured_output=report)
+
+        return invoke
+
+    result = investigate_event(
+        EVENT_ID, MemoryCandidateEventRepository([_event()]), EvidenceRepository(records), agent_factory=agent_factory,
+    )
+
+    assert captured["packet"]["satellite"]["observations"][0]["evidence_id"] == "obs_1"
+    assert captured["packet"]["sensor_comparison"]["status"] == "DISAGREEMENT"
+    assert result["contradictions"][0]["evidence_ids"] == ["obs_1", "coverage_1"]
+    assert result["recommendations"] == ["HUMAN_VERIFICATION", "REVIEW_SENSOR_DISAGREEMENT"]

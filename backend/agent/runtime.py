@@ -156,8 +156,8 @@ def investigate_event(
     recommendations = list(parsed.recommendations)
     if classification in {"REVIEW_REQUIRED", "INSUFFICIENT_EVIDENCE"} and "HUMAN_VERIFICATION" not in recommendations:
         recommendations.insert(0, "HUMAN_VERIFICATION")
-    comparison_available = evidence_packet["sensor_comparison"].get("status") == "MATCHED_COMPARISON_AVAILABLE"
-    if not comparison_available:
+    comparison_status = evidence_packet["sensor_comparison"].get("status")
+    if comparison_status != "DISAGREEMENT":
         recommendations = [item for item in recommendations if item != "REVIEW_SENSOR_DISAGREEMENT"]
     if evidence_packet["exposure"].get("status") != "OK":
         recommendations = [item for item in recommendations if item != "REVIEW_EXPOSURE"]
@@ -199,8 +199,11 @@ def _missing_evidence(packet: dict[str, Any]) -> list[str]:
     if packet["exposure"].get("status") != "OK":
         gaps.append("A sourced population-exposure estimate is unavailable.")
     comparison_status = packet["sensor_comparison"].get("status")
-    if comparison_status != "MULTIPLE_SOURCES_CO_CLUSTERED":
-        gaps.append("No second source observation is attached to this event.")
-    gaps.append("No normalized cross-sensor match or disagreement analysis is available.")
+    if comparison_status == "INDEPENDENT_OBSERVATION_UNAVAILABLE":
+        gaps.append("No independent source observation or validated coverage record is available.")
+    elif comparison_status == "INCONCLUSIVE":
+        gaps.append("Independent source observations are present, but the supplied records do not establish a spatial-temporal match or validated disagreement.")
+    elif comparison_status not in {"AGREEMENT", "DISAGREEMENT"}:
+        gaps.append("A usable cross-sensor comparison is unavailable.")
     gaps.append("No ground-based verification record is attached to this event.")
     return gaps
