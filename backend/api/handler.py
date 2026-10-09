@@ -151,6 +151,15 @@ def _investigation_payload(event_id: str, record: Mapping[str, Any]) -> dict[str
     }
 
 
+def _public_latest_review(review_history: Any, event_id: str) -> dict[str, Any] | None:
+    """Expose decision state in queue summaries without reviewer notes or identity."""
+    reviews = review_history(event_id, limit=1) or []
+    if not reviews:
+        return None
+    latest = reviews[0]
+    return {key: latest[key] for key in ("outcome", "reviewed_at_utc") if key in latest}
+
+
 def handle_request(
     method: str,
     path: str,
@@ -264,8 +273,16 @@ def handle_request(
                 if not 1 <= limit <= 100:
                     raise ValueError
                 records, next_cursor = investigation_store.list(limit, query.get("cursor"))
+                review_history = getattr(review_store, "list_for_event", None)
                 status, response = 200, {
-                    "items": [_investigation_payload(str(item.get("event_id", "")), item) for item in records],
+                    "items": [
+                        {
+                            **_investigation_payload(str(item.get("event_id", "")), item),
+                            "latest_review": _public_latest_review(review_history, str(item["event_id"]))
+                            if review_history and item.get("event_id") else None,
+                        }
+                        for item in records
+                    ],
                     "next_cursor": next_cursor,
                 }
             except (TypeError, ValueError):
@@ -316,7 +333,13 @@ def handle_request(
                 if review_store is None:
                     status, response = _error(503, "REVIEW_STORE_UNAVAILABLE", "Human review storage is not configured.")
                 else:
-                    status, response = 200, {"event_id": event.event_id, "items": review_store.list_for_event(event.event_id)}
+                    reviews = review_store.list_for_event(event.event_id)
+                    if not reviewer_id:
+                        reviews = [
+                            {key: item[key] for key in ("outcome", "reviewed_at_utc") if key in item}
+                            for item in reviews
+                        ]
+                    status, response = 200, {"event_id": event.event_id, "items": reviews}
             elif len(parts) == 4 and parts[3] == "review" and method == "POST":
                 if not reviewer_id:
                     status, response = _error(401, "REVIEWER_AUTH_REQUIRED", "Sign in with an authorized reviewer account to record an outcome.")

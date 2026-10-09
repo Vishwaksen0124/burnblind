@@ -149,8 +149,32 @@ def test_review_outcomes_are_validated_and_persisted():
 
     assert saved.status_code == 201
     assert listed.body["items"][0]["outcome"] == "NEEDS_VERIFICATION"
-    assert listed.body["items"][0]["reviewer_id"] == "reviewer-sub-123"
+    assert "reviewer_id" not in listed.body["items"][0]
+    assert "notes" not in listed.body["items"][0]
+    authorized_list = handle_request(
+        "GET", f"/events/{event_id}/review", {}, repository(), review_store=store,
+        reviewer_id="reviewer-sub-123",
+    )
+    assert authorized_list.body["items"][0]["reviewer_id"] == "reviewer-sub-123"
     assert invalid.status_code == 400
+
+
+def test_investigation_list_includes_only_latest_human_review():
+    class InvestigationStore:
+        def list(self, limit, cursor):
+            return ([{"event_id": "evt_000000000000000000000001", "status": "COMPLETED", "report": {"summary": "Reviewable."}}], None)
+
+    class ReviewStore:
+        def list_for_event(self, event_id, limit=20):
+            assert event_id == "evt_000000000000000000000001"
+            assert limit == 1
+            return [{"event_id": event_id, "outcome": "NEEDS_VERIFICATION", "reviewed_at_utc": "2026-10-09T06:00:00Z", "notes": "private detail", "reviewer_id": "private-reviewer"}]
+
+    response = handle_request("GET", "/investigations", {}, repository(), investigation_store=InvestigationStore(), review_store=ReviewStore())
+
+    assert response.status_code == 200
+    assert response.body["items"][0]["latest_review"]["outcome"] == "NEEDS_VERIFICATION"
+    assert response.body["items"][0]["latest_review"] == {"outcome": "NEEDS_VERIFICATION", "reviewed_at_utc": "2026-10-09T06:00:00Z"}
 
 
 def test_investigation_and_human_outcome_mutations_require_reviewer_identity():
