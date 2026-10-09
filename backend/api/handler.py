@@ -239,8 +239,8 @@ def handle_request(
             status, response = _error(400, "INVALID_QUERY", "limit must be from 1 to 100 and cursor must be valid.")
     elif method == "GET" and route == "/map-layers":
         try:
-            limit = int(query.get("limit", "100"))
-            if not 1 <= limit <= 100:
+            limit = int(query.get("limit", "250"))
+            if not 1 <= limit <= 250:
                 raise ValueError
             response = map_layer(repository, query.get("layer", ""), limit, evidence_reader)
             status = 200

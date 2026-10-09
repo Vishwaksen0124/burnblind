@@ -58,7 +58,7 @@ function waitBeforeRetry(milliseconds, signal) {
 export const getSummary = (signal) => request('/summary', { signal });
 export const getEvents = (signal, limit = 100, cursor) => request(`/events?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`, { signal });
 export const getActionCenter = (signal, limit = 50, cursor) => request(`/action-center?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`, { signal });
-export const getMapLayer = (layer, signal) => request(`/map-layers?layer=${encodeURIComponent(layer)}`, { signal });
+export const getMapLayer = (layer, signal, limit = 250) => request(`/map-layers?layer=${encodeURIComponent(layer)}&limit=${limit}`, { signal });
 export const getReplay = (at, signal, limit = 100, cursor) => request(`/replay?at=${encodeURIComponent(at)}&limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`, { signal });
 export const getEvent = (id, signal) => request(`/events/${encodeURIComponent(id)}`, { signal });
 export const getInvestigation = (id, signal) => request(`/events/${encodeURIComponent(id)}/investigation`, { signal });

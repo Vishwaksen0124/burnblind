@@ -67,23 +67,24 @@ class DynamoCandidateEventRepository:
         # Native Python key values: this client comes from a DynamoDB resource
         # table, so botocore already serializes keys. AttributeValue maps such as
         # {"S": event_id} are re-encoded and rejected as a schema mismatch.
-        pending = {table_name: {
-            "Keys": [{"event_id": event_id} for event_id in event_ids[:100]],
-            "ConsistentRead": True,
-        }}
         items: list[dict[str, Any]] = []
-        for attempt in range(5):
-            if not pending:
-                break
-            response = client.batch_get_item(RequestItems=pending)
-            items.extend(response.get("Responses", {}).get(table_name, []))
-            pending = response.get("UnprocessedKeys", {})
-            if pending and attempt < 4:
-                import time
+        for offset in range(0, len(event_ids), 100):
+            pending = {table_name: {
+                "Keys": [{"event_id": event_id} for event_id in event_ids[offset:offset + 100]],
+                "ConsistentRead": True,
+            }}
+            for attempt in range(5):
+                if not pending:
+                    break
+                response = client.batch_get_item(RequestItems=pending)
+                items.extend(response.get("Responses", {}).get(table_name, []))
+                pending = response.get("UnprocessedKeys", {})
+                if pending and attempt < 4:
+                    import time
 
-                time.sleep(0.05 * (2 ** attempt))
-        if pending:
-            raise RuntimeError("DynamoDB returned unprocessed event feature keys")
+                    time.sleep(0.05 * (2 ** attempt))
+            if pending:
+                raise RuntimeError("DynamoDB returned unprocessed event feature keys")
         allowed = ("blind_spot", "monitoring_coverage", "historical_context", "sensor_comparison", "exposure", "replay_timeline", "environmental_analysis")
         result = {}
         for item in items:
