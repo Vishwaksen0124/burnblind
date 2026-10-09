@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { getInvestigation, requestInvestigation } from '../api.js';
+import { getExposure, getInvestigation, getReviewOutcomes, getSensorComparison, requestInvestigation, submitReviewOutcome } from '../api.js';
 import { formatCoordinate, formatTimestamp } from '../lib/eventView.js';
 
 const ACTIVE_STATUSES = new Set(['QUEUED', 'RUNNING']);
@@ -10,6 +10,13 @@ export default function EventDetail({ event, onClose }) {
   const [requesting, setRequesting] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('event');
+  const [reviews, setReviews] = useState([]);
+  const [reviewOutcome, setReviewOutcome] = useState('NEEDS_VERIFICATION');
+  const [reviewNotes, setReviewNotes] = useState('');
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [reviewError, setReviewError] = useState('');
+  const [sensorComparison, setSensorComparison] = useState(null);
+  const [exposure, setExposure] = useState(null);
 
   const refresh = useCallback(async (signal) => {
     const value = await getInvestigation(event.event_id, signal);
@@ -33,8 +40,21 @@ export default function EventDetail({ event, onClose }) {
     };
     setLoading(true);
     setRecord(null);
+    setReviews([]);
+    setReviewError('');
+    setSensorComparison(null);
+    setExposure(null);
     setActiveTab('event');
     poll();
+    getReviewOutcomes(event.event_id, controller.signal)
+      .then((value) => setReviews(value.items || []))
+      .catch((err) => { if (err.name !== 'AbortError') setReviewError(err.message); });
+    getSensorComparison(event.event_id, controller.signal)
+      .then(setSensorComparison)
+      .catch((err) => { if (err.name !== 'AbortError') setSensorComparison({ status: 'ERROR', reason: err.message }); });
+    getExposure(event.event_id, controller.signal)
+      .then(setExposure)
+      .catch((err) => { if (err.name !== 'AbortError') setExposure({ status: 'ERROR', reason: err.message }); });
     return () => { controller.abort(); window.clearTimeout(timer); };
   }, [refresh]);
 
@@ -49,6 +69,21 @@ export default function EventDetail({ event, onClose }) {
       setError(err.message);
     } finally {
       setRequesting(false);
+    }
+  }
+
+  async function saveReview(eventValue) {
+    eventValue.preventDefault();
+    setReviewBusy(true);
+    setReviewError('');
+    try {
+      const value = await submitReviewOutcome(event.event_id, reviewOutcome, reviewNotes);
+      setReviews((current) => [value.review, ...current]);
+      setReviewNotes('');
+    } catch (err) {
+      setReviewError(err.message);
+    } finally {
+      setReviewBusy(false);
     }
   }
 
@@ -83,6 +118,10 @@ export default function EventDetail({ event, onClose }) {
         <div className={`detail-block ${event.score_status === 'HEURISTIC_SCORES_AVAILABLE' ? '' : 'detail-unavailable'}`}><span className="detail-label">ASSESSMENT</span><strong>{event.score_status === 'HEURISTIC_SCORES_AVAILABLE' ? 'Heuristic scores' : 'Not calculated'}</strong><small>{event.score_status === 'HEURISTIC_SCORES_AVAILABLE' ? `Fire signal ${formatScore(event.fire_likelihood)} · uncertainty ${formatScore(event.uncertainty)} · priority ${formatScore(event.priority_score)}` : 'Required scoring features are not available.'}</small></div>
       </div>
       <div className="detail-disclosure"><span>EVENT REFERENCE</span><code>{event.event_id}</code><span className="disclosure-separator" /><span>Scores, independent fire confirmation, and population exposure are unavailable for this replay.</span></div>
+      <div className="event-feature-grid">
+        <section className="event-feature-card"><p className="detail-label">CROSS-SENSOR EVIDENCE</p><strong>{sensorComparison?.result?.status?.replaceAll('_', ' ') || (sensorComparison?.status === 'UNAVAILABLE' ? 'COMPARISON UNAVAILABLE' : 'Loading comparison…')}</strong><p>{sensorComparison?.result?.reason || sensorComparison?.reason || 'Comparison status is unavailable.'}</p>{sensorComparison?.result?.evidence_ids?.length > 0 && <small>Evidence: {sensorComparison.result.evidence_ids.join(', ')}</small>}</section>
+        <section className="event-feature-card"><p className="detail-label">POTENTIAL EXPOSURE</p><strong>{exposure?.result?.population_estimate != null ? `${Math.round(exposure.result.population_estimate).toLocaleString()} estimated people` : exposure?.status === 'UNAVAILABLE' ? 'ESTIMATE UNAVAILABLE' : 'Loading estimate…'}</strong><p>{exposure?.result?.source ? `${exposure.result.source} · ${exposure.result.method?.replaceAll('_', ' ')}` : exposure?.reason || 'No sourced estimate is attached.'}</p>{exposure?.result?.limitations?.slice(0, 2).map((item) => <small key={item}>{item}</small>)}</section>
+      </div>
     </div>
     <div id="investigation-panel" className="detail-tab-panel" role="tabpanel" aria-labelledby="investigation-tab" hidden={activeTab !== 'investigation'}>
     <div className="investigation-report" aria-live="polite">
@@ -94,6 +133,16 @@ export default function EventDetail({ event, onClose }) {
       {record?.status === 'FAILED' && <div className="request-row"><p>The agent could not complete this review. The event remains available for human review.</p><button className="action-button" disabled={requesting} onClick={startInvestigation}>{requesting ? 'Retrying…' : 'Retry investigation'}</button></div>}
       {error && <p className="report-error" role="alert">{error}</p>}
       {report && <InvestigationFindings report={report} />}
+      <section className="human-review" aria-labelledby="human-review-title">
+        <div className="human-review-heading"><div><p className="eyebrow">HUMAN REVIEW</p><h4 id="human-review-title">Record an outcome</h4></div><span>PUBLIC DEMO · SUBMITTER NOT AUTHENTICATED</span></div>
+        {reviews.length > 0 && <p className="latest-review">Latest outcome: <strong>{reviews[0].outcome.replaceAll('_', ' ')}</strong>{reviews[0].reviewed_at_utc && <time dateTime={reviews[0].reviewed_at_utc}> · {formatTimestamp(reviews[0].reviewed_at_utc)}</time>}</p>}
+        {reviewError && <p className="report-error" role="alert">Review history unavailable: {reviewError}</p>}
+        <form onSubmit={saveReview}>
+          <label>Outcome<select value={reviewOutcome} onChange={(change) => setReviewOutcome(change.target.value)}><option value="NEEDS_VERIFICATION">Needs verification</option><option value="CONFIRMED">Confirmed by reviewer</option><option value="FALSE_POSITIVE">False positive</option><option value="INSUFFICIENT_EVIDENCE">Insufficient evidence</option></select></label>
+          <label>Notes <span>(optional)</span><textarea value={reviewNotes} onChange={(change) => setReviewNotes(change.target.value)} maxLength={1000} rows={2} placeholder="Add a short source-backed note" /></label>
+          <button className="action-button" type="submit" disabled={reviewBusy}>{reviewBusy ? 'Saving…' : 'Save review outcome'}</button>
+        </form>
+      </section>
     </div>
     </div>
   </section>;

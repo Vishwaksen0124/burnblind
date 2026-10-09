@@ -1,13 +1,14 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 const MAX_THROTTLE_RETRIES = 4;
 
-async function request(path, { signal, method = 'GET' } = {}) {
+async function request(path, { signal, method = 'GET', body } = {}) {
   let response;
   for (let attempt = 0; ; attempt += 1) {
     response = await fetch(`${API_BASE}${path}`, {
       method,
       signal,
       headers: method === 'POST' ? { 'Content-Type': 'application/json' } : undefined,
+      body: body === undefined ? undefined : JSON.stringify(body),
     });
     if (response.status !== 429 || attempt >= MAX_THROTTLE_RETRIES) break;
     await waitBeforeRetry(retryDelay(response, attempt), signal);
@@ -50,8 +51,15 @@ function waitBeforeRetry(milliseconds, signal) {
 }
 
 export const getSummary = (signal) => request('/summary', { signal });
-export const getEvents = (signal, limit = 100) => request(`/events?limit=${limit}`, { signal });
+export const getEvents = (signal, limit = 100, cursor) => request(`/events?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`, { signal });
+export const getActionCenter = (signal, limit = 50, cursor) => request(`/action-center?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`, { signal });
+export const getMapLayer = (layer, signal) => request(`/map-layers?layer=${encodeURIComponent(layer)}`, { signal });
+export const getReplay = (at, signal, limit = 100, cursor) => request(`/replay?at=${encodeURIComponent(at)}&limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`, { signal });
 export const getEvent = (id, signal) => request(`/events/${encodeURIComponent(id)}`, { signal });
 export const getInvestigation = (id, signal) => request(`/events/${encodeURIComponent(id)}/investigation`, { signal });
 export const getInvestigations = (signal, limit = 50, cursor) => request(`/investigations?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`, { signal });
 export const requestInvestigation = (id) => request(`/events/${encodeURIComponent(id)}/investigate`, { method: 'POST' });
+export const getReviewOutcomes = (id, signal) => request(`/events/${encodeURIComponent(id)}/review`, { signal });
+export const submitReviewOutcome = (id, outcome, notes) => request(`/events/${encodeURIComponent(id)}/review`, { method: 'POST', body: { outcome, notes } });
+export const getSensorComparison = (id, signal) => request(`/events/${encodeURIComponent(id)}/sensor-comparison`, { signal });
+export const getExposure = (id, signal) => request(`/events/${encodeURIComponent(id)}/exposure`, { signal });

@@ -3,6 +3,7 @@ import { Flame, Satellite } from 'lucide-react';
 export function Header({ page }) {
   const links = [
     ['monitoring', '#monitoring', 'Monitoring'],
+    ['replay', '#replay', 'Replay'],
     ['investigations', '#investigations', 'Investigations'],
     ['how-it-works', page === 'home' ? '#landing-how-it-works' : '#how-it-works', 'How it works'],
     ['methodology', page === 'home' ? '#landing-methodology' : '#methodology', 'Documentation'],
