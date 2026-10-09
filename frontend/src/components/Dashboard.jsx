@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, AlertTriangle, Search, Satellite } from 'lucide-react';
 import { getActionCenter, getMapLayer, getSummary } from '../api.js';
 import { eventLabel, eventSearchText, formatTimestamp } from '../lib/eventView.js';
@@ -32,6 +32,7 @@ export default function Dashboard() {
   const [activeLayer, setActiveLayer] = useState('events');
   const [layerResult, setLayerResult] = useState(null);
   const [layerRetry, setLayerRetry] = useState(0);
+  const detailRef = useRef(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -81,6 +82,21 @@ export default function Dashboard() {
     return [...counts.entries()].sort(([, left], [, right]) => right - left);
   }, [events]);
 
+  const assessmentStats = useMemo(() => {
+    const scored = events.filter((event) => event.score_status === 'HEURISTIC_SCORES_AVAILABLE');
+    const prioritized = scored.filter((event) => Number.isFinite(event.priority_score) || Number.isFinite(event.provisional_priority_score));
+    const review = events.filter((event) => buckets[event.event_id] === 'REQUIRES_REVIEW');
+    return { scored: scored.length, prioritized: prioritized.length, review: review.length };
+  }, [events, buckets]);
+
+  useEffect(() => {
+    if (!selected) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [selected?.event_id]);
+
   function openEvent(event) {
     setSelected(event);
   }
@@ -95,7 +111,7 @@ export default function Dashboard() {
     <section className="ops-strip" aria-label="Replay monitoring summary">
       <div className="ops-stat"><span className="ops-icon"><Activity aria-hidden="true" /></span><span><small>Candidate events</small><strong>{summary ? summary.candidate_events.toLocaleString() : '—'}</strong></span><em>In replay sample</em></div>
       <div className="ops-stat"><span className="ops-icon"><Satellite aria-hidden="true" /></span><span><small>Observation source</small><strong>GK2A AMI</strong></span><em>Oct–Nov 2025</em></div>
-      <div className="ops-stat ops-caution"><span className="ops-icon"><AlertTriangle aria-hidden="true" /></span><span><small>Assessment status</small><strong>Not scored</strong></span><em>Required inputs unavailable</em></div>
+      <div className="ops-stat ops-caution"><span className="ops-icon"><AlertTriangle aria-hidden="true" /></span><span><small>Deterministic scoring</small><strong>{assessmentStats.scored}/{events.length || '—'}</strong></span><em>{assessmentStats.prioritized} with priority · {assessmentStats.review} need review</em></div>
       <div className="replay-tag"><i /> HISTORICAL REPLAY</div>
     </section>
 
@@ -132,7 +148,7 @@ export default function Dashboard() {
         {!loading && !error && visibleEvents.length > 0 && <div className="event-list">
           {visibleEvents.map((event) => <button className={`event-row ${selected?.event_id === event.event_id ? 'selected' : ''}`} key={event.event_id} onClick={() => openEvent(event)}>
             <span className="candidate-mark" aria-hidden="true" />
-            <span className="event-copy"><strong>{eventLabel(event)}</strong><small>{formatTimestamp(event.detected_at_utc)} · {event.sources.join(' + ')}</small><span className="event-meta"><b className={`action-bucket bucket-${buckets[event.event_id]?.toLowerCase()}`}>{(buckets[event.event_id] || 'MORE_EVIDENCE_NEEDED').replaceAll('_', ' ')}</b> · {event.detection_count} {event.detection_count === 1 ? 'detection' : 'detections'}</span></span>
+            <span className="event-copy"><strong>{eventLabel(event)}</strong><small>{formatTimestamp(event.detected_at_utc)} · {event.sources.join(' + ')}</small><span className="event-meta"><b className={`action-bucket bucket-${buckets[event.event_id]?.toLowerCase()}`}>{(buckets[event.event_id] || 'MORE_EVIDENCE_NEEDED').replaceAll('_', ' ')}</b> · {event.detection_count} {event.detection_count === 1 ? 'detection' : 'detections'} · <b className="event-priority">{Number.isFinite(event.priority_score) ? `Priority ${event.priority_score.toFixed(2)}` : Number.isFinite(event.provisional_priority_score) ? `Provisional priority ${event.provisional_priority_score.toFixed(2)}` : 'Priority pending'}</b></span></span>
           </button>)}
         </div>}
         <p className="queue-note">Triage uses attached deterministic scores. Unscored candidates stay in “More evidence needed”; missing inputs never count as negative evidence.</p>
@@ -154,6 +170,6 @@ export default function Dashboard() {
       </article>
     </section>
 
-    {selected && <EventDetail event={selected} onClose={() => setSelected(null)} />}
+    {selected && <div ref={detailRef} className="monitoring-selection"><EventDetail event={selected} onClose={() => setSelected(null)} /></div>}
   </>;
 }

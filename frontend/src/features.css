@@ -4,6 +4,7 @@
 .layer-button.active{border-color:#65533a;background:#29251e;color:#edc38c}
 .layer-disclosure{margin:0;padding:8px 12px;border-top:1px solid #34362f;color:#b2a78e;font-size:9px;line-height:1.5}
 .action-bucket{color:#cbbba0;font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+.event-priority{color:#d8c49f;font-weight:600}
 .bucket-requires_review{color:#de8b75}.bucket-low_priority{color:#a8bf91}.bucket-more_evidence_needed{color:#e3bc7e}
 .human-review{margin:14px 17px 18px;padding:13px;border:1px solid #303a40;background:#151b1f}
 .human-review-heading{display:flex;align-items:center;justify-content:space-between;gap:14px}

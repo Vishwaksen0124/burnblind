@@ -398,6 +398,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 .latest-review blockquote{margin:10px 0 0;padding-left:12px;border-left:1px solid #454d40;color:#b7baaf}
 .latest-review .secondary-button{margin-top:10px;min-height:38px}
 .detail-section{margin-top:0}
+.monitoring-selection{scroll-margin-top:18px;margin-top:22px}
 @media(max-width:700px){.investigation-filters{overflow-x:auto;flex-wrap:nowrap}.investigation-filters .filter-button{flex:none}.investigation-card-actions>a.action-button{width:100%}}
 
 /* Monitoring selection panel: lead with the candidate and surface evidence state plainly. */

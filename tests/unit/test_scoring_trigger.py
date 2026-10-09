@@ -37,6 +37,14 @@ def test_high_priority_and_exposure_reasons_are_recorded():
     assert "HIGH_EXPOSURE" in decision["reasons"]
 
 
+def test_missing_priority_components_are_labelled_provisional():
+    decision = evaluate_score_features({"thermal_signal": 0.8, "exposure_score": 0.5})
+
+    assert decision["priority_score"] is None
+    assert decision["provisional_priority_score"] == pytest.approx(0.4)
+    assert decision["priority_status"] == "PROVISIONAL_MISSING_COMPONENTS"
+
+
 def test_unknown_score_feature_is_rejected():
     with pytest.raises(ValueError, match="unsupported fields"):
         evaluate_score_features({"unverified_feature": 0.9})

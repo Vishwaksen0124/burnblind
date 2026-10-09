@@ -37,6 +37,7 @@ class DynamoCandidateEventRepository:
         keys = (
             "blindness_score", "fire_likelihood_score", "uncertainty",
             "priority_score", "score_version", "feature_version",
+            "provisional_priority_score", "priority_status",
             "evidence_completeness", "investigation_qualifies",
             "investigation_trigger_reasons", "investigation_status",
         )
