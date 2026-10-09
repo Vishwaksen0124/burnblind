@@ -227,12 +227,19 @@ Resources:
                   - s3:PutBucketTagging
                   - s3:GetBucketTagging
                 Resource: '*'
-              - Sid: ManageStackRolesAndPassOnlyRuntimeRoles
+              - Sid: CreateOnlyBoundBurnBlindRuntimeRoles
                 Effect: Allow
                 Action:
                   - iam:CreateRole
-                  - iam:DeleteRole
                   - iam:PutRolePermissionsBoundary
+                Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/burnblind-replay-*'
+                Condition:
+                  ArnEquals:
+                    iam:PermissionsBoundary: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/BurnBlindRuntimeBoundary'
+              - Sid: ManageOnlySAMTaggedRuntimeRoles
+                Effect: Allow
+                Action:
+                  - iam:DeleteRole
                   - iam:GetRole
                   - iam:UpdateAssumeRolePolicy
                   - iam:PutRolePolicy
@@ -244,11 +251,24 @@ Resources:
                   - iam:ListAttachedRolePolicies
                   - iam:TagRole
                   - iam:UntagRole
-                  - iam:PassRole
                 Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/burnblind-replay-*'
                 Condition:
-                  ArnEquals:
-                    iam:PermissionsBoundary: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/BurnBlindRuntimeBoundary'
+                  StringEquals:
+                    aws:ResourceTag/lambda:createdBy: SAM
+              - Sid: UpdateSAMRuntimeRoleBoundary
+                Effect: Allow
+                Action: iam:DeleteRolePermissionsBoundary
+                Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/burnblind-replay-*'
+                Condition:
+                  StringEquals:
+                    aws:ResourceTag/lambda:createdBy: SAM
+              - Sid: PassOnlyToBurnBlindLambdaFunctions
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/burnblind-replay-*'
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: lambda.amazonaws.com
               - Sid: ReadDeploymentArtifacts
                 Effect: Allow
                 Action:
