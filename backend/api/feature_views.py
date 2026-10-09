@@ -106,6 +106,8 @@ def _event_payload(event, assessment):
         "fire_likelihood": (assessment or {}).get("fire_likelihood_score"),
         "uncertainty": (assessment or {}).get("uncertainty"),
         "priority_score": (assessment or {}).get("priority_score"),
+        "provisional_priority_score": (assessment or {}).get("provisional_priority_score"),
+        "priority_status": (assessment or {}).get("priority_status", "UNAVAILABLE"),
         "score_version": (assessment or {}).get("score_version"),
         "score_status": "HEURISTIC_SCORES_AVAILABLE" if assessment else "AWAITING_REQUIRED_FEATURES",
     })
