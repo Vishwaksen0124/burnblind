@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { getEvents } from '../api.js';
 import { formatTimestamp } from '../lib/eventView.js';
 import { Eyebrow, PageHeading, StateMessage } from './shared.jsx';
@@ -63,9 +64,9 @@ export default function ReplayPage() {
     {!loading && !error && events.length > 0 && <>
       <section className="replay-controls panel" aria-label="Historical replay controls">
         <div className="replay-buttons">
-          <button className="replay-step" onClick={() => { setPlaying(false); setIndex((value) => Math.max(0, value - 1)); }} disabled={index === 0} aria-label="Previous observation">←</button>
+          <button className="replay-step" onClick={() => { setPlaying(false); setIndex((value) => Math.max(0, value - 1)); }} disabled={index === 0} aria-label="Previous observation"><ChevronLeft aria-hidden="true" /></button>
           <button className="action-button replay-toggle" onClick={() => { if (index === events.length - 1) setIndex(0); setPlaying((value) => !value); }} aria-label={playing ? 'Pause replay' : 'Play replay'}>{playing ? 'Pause' : 'Play'}</button>
-          <button className="replay-step" onClick={() => { setPlaying(false); setIndex((value) => Math.min(events.length - 1, value + 1)); }} disabled={index === events.length - 1} aria-label="Next observation">→</button>
+          <button className="replay-step" onClick={() => { setPlaying(false); setIndex((value) => Math.min(events.length - 1, value + 1)); }} disabled={index === events.length - 1} aria-label="Next observation"><ChevronRight aria-hidden="true" /></button>
           <label className="replay-speed">Speed<select value={speed} onChange={(event) => setSpeed(Number(event.target.value))}><option value="0.5">0.5×</option><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
         </div>
         <label className="replay-range"><span>{events[0] ? formatTimestamp(events[0].detected_at_utc) : ''}</span><input type="range" min="0" max={events.length - 1} value={index} onChange={(event) => { setPlaying(false); setIndex(Number(event.target.value)); }} aria-label="Replay timestamp" /><span>{events.at(-1) ? formatTimestamp(events.at(-1).detected_at_utc) : ''}</span></label>

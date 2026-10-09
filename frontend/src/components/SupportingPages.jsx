@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
-import { getInvestigations } from '../api.js';
+import { useEffect, useRef, useState } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import { getEvent, getInvestigations } from '../api.js';
 import { PageHeading, StateMessage } from './shared.jsx';
+import EventDetail from './EventDetail.jsx';
 
 const PIPELINE = [
   { number: '01', title: 'Observe', copy: 'Start with a source record and preserve its timestamp, coordinates, sensor and provenance.', input: 'GK2A AMI historical replay', result: 'Normalized observations in UTC and a shared 5 km grid', state: 'Active in replay' },
@@ -52,6 +54,11 @@ export function InvestigationsPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [reviewLoadingId, setReviewLoadingId] = useState('');
+  const [reviewLoadError, setReviewLoadError] = useState('');
+  const [expandedReports, setExpandedReports] = useState(() => new Set());
+  const eventReviewRef = useRef(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -64,6 +71,10 @@ export function InvestigationsPage() {
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [retry]);
+
+  useEffect(() => {
+    if (selectedEvent) eventReviewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [selectedEvent]);
 
   async function loadMore() {
     if (!nextCursor || loadingMore) return;
@@ -80,22 +91,65 @@ export function InvestigationsPage() {
     }
   }
 
+  async function openEventReview(eventId) {
+    setReviewLoadingId(eventId);
+    setReviewLoadError('');
+    try {
+      const event = await getEvent(eventId);
+      setSelectedEvent(event);
+    } catch (cause) {
+      setReviewLoadError(cause.message || 'Event details are unavailable.');
+    } finally {
+      setReviewLoadingId('');
+    }
+  }
+
   return <>
-    <PageHeading eyebrow="EVIDENCE REVIEW" title="Investigations">Queued and completed evidence reviews, linked to their candidate event records.</PageHeading>
+    <PageHeading eyebrow="SAVED EVIDENCE REVIEWS" title="Investigations">The Action Center is the candidate queue on Monitoring. This page contains reports already queued or completed. Open a full report to inspect its evidence and uncertainty, or open the event review to retry a failed investigation or record a human outcome. Saving an outcome requires invited reviewer sign-in.</PageHeading>
     {loading && <StateMessage title="Loading investigations">Reading persisted review records.</StateMessage>}
     {error && !loading && <StateMessage title="Investigation data unavailable">{error} <button className="text-button" onClick={() => setRetry((value) => value + 1)}>Retry</button></StateMessage>}
     {!loading && !error && items.length === 0 && <StateMessage title="No investigations yet">Request an investigation from a candidate event. Completed reports will appear here.</StateMessage>}
     {!loading && !error && items.length > 0 && <section className="investigation-list" aria-label="Investigation reports">
-      {items.map((item) => <article className="investigation-card panel" key={item.event_id}>
-        <header><div><p className="eyebrow">EVENT · {item.event_id}</p><h2>{item.investigation?.classification?.replaceAll('_', ' ') || item.status?.replaceAll('_', ' ')}</h2></div><span className={`investigation-status status-${item.status?.toLowerCase()}`}>{item.status?.replaceAll('_', ' ')}</span></header>
+      {items.map((item) => {
+        const expanded = expandedReports.has(item.event_id);
+        const recommendations = item.investigation?.recommendations || (item.investigation?.recommended_action ? [item.investigation.recommended_action] : []);
+        return <article className="investigation-card panel" key={item.event_id}>
+        <header><div><p className="eyebrow">{item.investigation?.classification?.replaceAll('_', ' ') || item.status?.replaceAll('_', ' ')}</p><h2>Evidence review for this candidate</h2></div><span className={`investigation-status status-${item.status?.toLowerCase()}`}>{item.status?.replaceAll('_', ' ')}</span></header>
+        <p className="investigation-event-reference">Event reference <code>{item.event_id}</code></p>
         {item.investigation?.summary && <p className="investigation-card-summary">{item.investigation.summary}</p>}
-        {item.investigation?.evidence?.length > 0 && <p className="investigation-card-meta">{item.investigation.evidence.length} cited evidence {item.investigation.evidence.length === 1 ? 'record' : 'records'} · {(item.investigation.recommendations || (item.investigation.recommended_action ? [item.investigation.recommended_action] : [])).map((action) => action.replaceAll('_', ' ')).join(' · ')}</p>}
+        {item.investigation && <>
+          <p className="investigation-card-meta">{item.investigation.evidence?.length || 0} cited records · {item.investigation.uncertainties?.length || 0} uncertainties · {item.investigation.missing_evidence?.length || 0} evidence gaps</p>
+          {recommendations.length > 0 && <p className="investigation-recommendation-summary"><span>Recommended next step</span>{recommendations.map((action) => action.replaceAll('_', ' ')).join(' · ')}</p>}
+        </>}
         {item.error_code && <p className="report-error">Review failed · {item.error_code}</p>}
+        {item.investigation && <>
+          <div className="investigation-card-actions">
+            <button className="secondary-button report-toggle" type="button" aria-expanded={expanded} onClick={() => setExpandedReports((current) => { const next = new Set(current); if (next.has(item.event_id)) next.delete(item.event_id); else next.add(item.event_id); return next; })}>{expanded ? <>Hide report <ChevronUp aria-hidden="true" /></> : <>View full report <ChevronDown aria-hidden="true" /></>}</button>
+            <button className="action-button" type="button" disabled={reviewLoadingId === item.event_id} onClick={() => openEventReview(item.event_id)}>{reviewLoadingId === item.event_id ? 'Loading event…' : 'Open event review'}</button>
+          </div>
+          {expanded && <InvestigationReportDetails report={item.investigation} />}
+        </>}
+        {!item.investigation && <div className="investigation-card-actions"><button className="action-button" type="button" disabled={reviewLoadingId === item.event_id} onClick={() => openEventReview(item.event_id)}>{reviewLoadingId === item.event_id ? 'Loading event…' : item.status === 'FAILED' ? 'Open event and retry' : 'Open event review'}</button></div>}
         <footer><span>Requested {formatDate(item.requested_at_utc)}</span>{item.completed_at_utc && <span>Completed {formatDate(item.completed_at_utc)}</span>}<span>{item.model_id || 'Model metadata unavailable'}</span></footer>
-      </article>)}
+      </article>;
+      })}
       {nextCursor && <button className="action-button investigation-load-more" disabled={loadingMore} onClick={loadMore}>{loadingMore ? 'Loading…' : 'Load more investigations'}</button>}
     </section>}
+    {reviewLoadError && <StateMessage title="Event review unavailable">{reviewLoadError}</StateMessage>}
+    {selectedEvent && <div ref={eventReviewRef}><EventDetail event={selectedEvent} initialTab="investigation" onClose={() => setSelectedEvent(null)} /></div>}
   </>;
+}
+
+function InvestigationReportDetails({ report }) {
+  const recommendations = report.recommendations || (report.recommended_action ? [report.recommended_action] : []);
+  return <div className="investigation-full-report">
+    <section><h3>Summary</h3><p>{report.summary || 'Summary unavailable.'}</p></section>
+    {report.evidence?.length > 0 && <section><h3>Evidence and provenance</h3><ul>{report.evidence.map((item, index) => <li key={item.evidence_id || index}><span>{[item.evidence_type, item.source].filter(Boolean).join(' · ') || 'Source unavailable'}</span><p>{item.summary || item.interpretation || 'Finding unavailable.'}</p><code>{item.evidence_id || 'Evidence reference unavailable'}</code></li>)}</ul></section>}
+    {report.contradictions?.length > 0 && <section><h3>Contradictions</h3><ul>{report.contradictions.map((item, index) => <li key={item.explanation || item || index}><p>{typeof item === 'string' ? item : item.explanation}</p>{typeof item === 'object' && item.evidence_ids?.length > 0 && <code>{item.evidence_ids.join(' · ')}</code>}</li>)}</ul></section>}
+    {report.missing_evidence?.length > 0 && <section><h3>Evidence unavailable</h3><ul>{report.missing_evidence.map((item) => <li key={item}><p>{item}</p></li>)}</ul></section>}
+    {report.uncertainties?.length > 0 && <section><h3>Uncertainty</h3><ul>{report.uncertainties.map((item) => <li key={item}><p>{item}</p></li>)}</ul></section>}
+    {recommendations.length > 0 && <section className="investigation-next-step"><h3>Recommended human review</h3><p>{recommendations.map((item) => item.replaceAll('_', ' ')).join(' · ')}</p></section>}
+  </div>;
 }
 
 function formatDate(value) {

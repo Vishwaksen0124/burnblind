@@ -9,7 +9,12 @@ export function formatTimestamp(value) {
 }
 
 export function eventLabel(event) {
-  return event.detection_count > 1 ? 'Repeated thermal detections' : 'Potential thermal detection';
+  const latitude = Number(event.latitude);
+  const longitude = Number(event.longitude);
+  const place = Number.isFinite(latitude) && Number.isFinite(longitude)
+    ? `near ${Math.abs(latitude).toFixed(2)}°${latitude < 0 ? 'S' : 'N'}, ${Math.abs(longitude).toFixed(2)}°${longitude < 0 ? 'W' : 'E'}`
+    : 'location unavailable';
+  return `${event.detection_count > 1 ? 'Repeated detections' : 'Candidate detection'} ${place}`;
 }
 
 export function eventSearchText(event) {

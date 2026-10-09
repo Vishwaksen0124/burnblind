@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
+import { X } from 'lucide-react';
 import { getExposure, getInvestigation, getReviewOutcomes, getSensorComparison, requestInvestigation, submitReviewOutcome } from '../api.js';
 import { formatCoordinate, formatTimestamp } from '../lib/eventView.js';
 import { useReviewerAuth } from '../reviewerAuth.jsx';
 
 const ACTIVE_STATUSES = new Set(['QUEUED', 'RUNNING']);
 
-export default function EventDetail({ event, onClose }) {
+export default function EventDetail({ event, onClose, initialTab = 'event' }) {
   const reviewerAuth = useReviewerAuth();
   const [record, setRecord] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -46,7 +47,7 @@ export default function EventDetail({ event, onClose }) {
     setReviewError('');
     setSensorComparison(null);
     setExposure(null);
-    setActiveTab('event');
+    setActiveTab(initialTab);
     poll();
     getReviewOutcomes(event.event_id, controller.signal)
       .then((value) => setReviews(value.items || []))
@@ -58,7 +59,7 @@ export default function EventDetail({ event, onClose }) {
       .then(setExposure)
       .catch((err) => { if (err.name !== 'AbortError') setExposure({ status: 'ERROR', reason: err.message }); });
     return () => { controller.abort(); window.clearTimeout(timer); };
-  }, [refresh]);
+  }, [refresh, initialTab]);
 
   async function startInvestigation() {
     if (!reviewerAuth.session) {
@@ -113,7 +114,7 @@ export default function EventDetail({ event, onClose }) {
 
   const report = record?.investigation;
   return <section className="detail-section panel" aria-labelledby="event-detail-title">
-    <div className="detail-heading"><div><p className="eyebrow">CANDIDATE EVENT · SOURCE EVIDENCE</p><h2 id="event-detail-title">Potential thermal detection</h2></div><button className="close-button" onClick={onClose} aria-label="Close event details">×</button></div>
+    <div className="detail-heading"><div><p className="eyebrow">CANDIDATE EVENT · SOURCE EVIDENCE</p><h2 id="event-detail-title">{event.detection_count > 1 ? 'Repeated candidate detections' : 'Candidate detection'}</h2></div><button className="close-button" onClick={onClose} aria-label="Close event details"><X aria-hidden="true" /></button></div>
     <div className="detail-tabs" role="tablist" aria-label="Event review sections" onKeyDown={handleTabKeyDown}>
       <button id="event-tab" role="tab" aria-selected={activeTab === 'event'} aria-controls="event-panel" tabIndex={activeTab === 'event' ? 0 : -1} onClick={() => setActiveTab('event')}>Event details</button>
       <button id="investigation-tab" role="tab" aria-selected={activeTab === 'investigation'} aria-controls="investigation-panel" tabIndex={activeTab === 'investigation' ? 0 : -1} onClick={() => setActiveTab('investigation')}>
