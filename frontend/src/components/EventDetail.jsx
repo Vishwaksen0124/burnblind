@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { ArrowRight, Clock3, FileCode2, MapPin, Satellite, UsersRound, X } from 'lucide-react';
 import { getExposure, getInvestigation, getReviewOutcomes, getSensorComparison, requestInvestigation, submitReviewOutcome } from '../api.js';
 import { formatCoordinate, formatTimestamp } from '../lib/eventView.js';
 import { useReviewerAuth } from '../reviewerAuth.jsx';
@@ -118,26 +118,30 @@ export default function EventDetail({ event, onClose, initialTab = 'event' }) {
   }
 
   const report = record?.investigation;
+  const hasScores = event.score_status === 'HEURISTIC_SCORES_AVAILABLE';
+  const comparisonAvailable = sensorComparison?.status === 'AVAILABLE';
+  const exposureAvailable = exposure?.status === 'AVAILABLE';
   return <section className="detail-section panel" aria-labelledby="event-detail-title">
-    <div className="detail-heading"><div><p className="eyebrow">CANDIDATE EVENT · SOURCE EVIDENCE</p><h2 id="event-detail-title">{event.detection_count > 1 ? 'Repeated candidate detections' : 'Candidate detection'}</h2></div><button className="close-button" onClick={onClose} aria-label="Close event details"><X aria-hidden="true" /></button></div>
+    <div className="detail-heading candidate-heading"><div className="candidate-heading-main"><p className="eyebrow">OBSERVATION SUMMARY</p><h2 id="event-detail-title">{event.detection_count > 1 ? 'Grouped candidate event' : 'Candidate event'}</h2><p className="candidate-location"><MapPin aria-hidden="true" />{formatCoordinate(event.latitude, 'N')} <span>·</span> {formatCoordinate(event.longitude, 'E')}</p></div><div className="candidate-heading-actions"><span className="candidate-state"><i aria-hidden="true" />Unverified observation</span><button className="close-button" onClick={onClose} aria-label="Close event details"><X aria-hidden="true" /></button></div></div>
     <div className="detail-tabs" role="tablist" aria-label="Event review sections" onKeyDown={handleTabKeyDown}>
       <button id="event-tab" role="tab" aria-selected={activeTab === 'event'} aria-controls="event-panel" tabIndex={activeTab === 'event' ? 0 : -1} onClick={() => setActiveTab('event')}>Event details</button>
       <button id="investigation-tab" role="tab" aria-selected={activeTab === 'investigation'} aria-controls="investigation-panel" tabIndex={activeTab === 'investigation' ? 0 : -1} onClick={() => setActiveTab('investigation')}>
-        Investigation{record?.status === 'FAILED' && <span className="tab-state tab-state-failed">Failed</span>}{record?.status === 'COMPLETED' && <span className="tab-state tab-state-complete">Ready</span>}
+        Investigation report{record?.status === 'FAILED' && <span className="tab-state tab-state-failed">Failed</span>}{record?.status === 'COMPLETED' && <span className="tab-state tab-state-complete">Ready</span>}
       </button>
     </div>
     <div id="event-panel" className="detail-tab-panel" role="tabpanel" aria-labelledby="event-tab" hidden={activeTab !== 'event'}>
-      <div className="detail-grid">
-        <div className="detail-block"><span className="detail-label">OBSERVED</span><strong>{formatTimestamp(event.detected_at_utc)}</strong><small>Last observation · {formatTimestamp(event.last_observed_at_utc)}</small></div>
-        <div className="detail-block"><span className="detail-label">LOCATION</span><strong>{formatCoordinate(event.latitude, 'N')} · {formatCoordinate(event.longitude, 'E')}</strong><small>Punjab + Haryana replay region</small></div>
-        <div className="detail-block"><span className="detail-label">OBSERVED EVIDENCE</span><strong>{event.sources.join(' · ') || 'Source unavailable'}</strong><small>{event.detection_count} grouped {event.detection_count === 1 ? 'detection' : 'detections'}</small></div>
-        <div className={`detail-block ${event.score_status === 'HEURISTIC_SCORES_AVAILABLE' ? '' : 'detail-unavailable'}`}><span className="detail-label">ASSESSMENT</span><strong>{event.score_status === 'HEURISTIC_SCORES_AVAILABLE' ? 'Heuristic scores' : 'Not calculated'}</strong><small>{event.score_status === 'HEURISTIC_SCORES_AVAILABLE' ? `Fire signal ${formatScore(event.fire_likelihood)} · uncertainty ${formatScore(event.uncertainty)} · priority ${formatScore(event.priority_score)}` : 'Required scoring features are not available.'}</small></div>
+      <div className="candidate-facts">
+        <div className="candidate-fact"><span className="fact-icon"><Clock3 aria-hidden="true" /></span><div><span className="detail-label">OBSERVED</span><strong>{formatTimestamp(event.detected_at_utc)}</strong><small>{event.last_observed_at_utc && event.last_observed_at_utc !== event.detected_at_utc ? `Last seen ${formatTimestamp(event.last_observed_at_utc)}` : 'Single recorded observation'}</small></div></div>
+        <div className="candidate-fact"><span className="fact-icon"><Satellite aria-hidden="true" /></span><div><span className="detail-label">SOURCE RECORD</span><strong>{(event.sources || []).map(formatSource).join(' · ') || 'Source unavailable'}</strong><small>{event.detection_count} {event.detection_count === 1 ? 'linked detection' : 'linked detections'}</small></div></div>
+        <div className={`candidate-fact candidate-assessment${hasScores ? '' : ' is-unavailable'}`}><span className="fact-icon"><FileCode2 aria-hidden="true" /></span><div><span className="detail-label">DETERMINISTIC ASSESSMENT</span><strong>{hasScores ? 'Scores available' : 'Awaiting feature data'}</strong><small>{hasScores ? `Fire signal ${formatScore(event.fire_likelihood)} · uncertainty ${formatScore(event.uncertainty)} · priority ${formatScore(event.priority_score)}` : 'Required scoring inputs are not attached to this candidate.'}</small></div></div>
       </div>
-      <div className="detail-disclosure"><span>EVENT REFERENCE</span><code>{event.event_id}</code><span className="disclosure-separator" /><span>Scores, independent fire confirmation, and population exposure are unavailable for this replay.</span></div>
+      <div className="evidence-context-heading"><div><p className="eyebrow">SUPPORTING CONTEXT</p><h3>What else is known</h3></div><button className="context-action" type="button" onClick={() => setActiveTab('investigation')}>Open investigation <ArrowRight aria-hidden="true" /></button></div>
       <div className="event-feature-grid">
-        <section className="event-feature-card"><p className="detail-label">CROSS-SENSOR EVIDENCE</p><strong>{sensorComparison?.result?.status?.replaceAll('_', ' ') || (sensorComparison?.status === 'UNAVAILABLE' ? 'COMPARISON UNAVAILABLE' : 'Loading comparison…')}</strong><p>{sensorComparison?.result?.reason || sensorComparison?.reason || 'Comparison status is unavailable.'}</p>{sensorComparison?.result?.evidence_ids?.length > 0 && <small>Evidence: {sensorComparison.result.evidence_ids.join(', ')}</small>}</section>
-        <section className="event-feature-card"><p className="detail-label">POTENTIAL EXPOSURE</p><strong>{exposure?.result?.population_estimate != null ? `${Math.round(exposure.result.population_estimate).toLocaleString()} estimated people` : exposure?.status === 'UNAVAILABLE' ? 'ESTIMATE UNAVAILABLE' : 'Loading estimate…'}</strong><p>{exposure?.result?.source ? `${exposure.result.source} · ${exposure.result.method?.replaceAll('_', ' ')}` : exposure?.reason || 'No sourced estimate is attached.'}</p>{exposure?.result?.limitations?.slice(0, 2).map((item) => <small key={item}>{item}</small>)}</section>
+        <ContextCard icon={<Satellite aria-hidden="true" />} title="Cross-sensor comparison" state={sensorComparison?.status} value={comparisonAvailable ? sensorComparison.result?.status?.replaceAll('_', ' ') || 'Comparison available' : null} detail={comparisonAvailable ? sensorComparison.result?.reason || 'A matched second-sensor record is attached.' : sensorComparison?.status === 'ERROR' ? sensorComparison.reason : 'No matched observation from a second sensor is attached to this candidate.'} evidenceIds={comparisonAvailable ? sensorComparison.result?.evidence_ids : null} />
+        <ContextCard icon={<UsersRound aria-hidden="true" />} title="Potential population exposure" state={exposure?.status} value={exposureAvailable && Number.isFinite(exposure.result?.population_estimate) ? `${Math.round(exposure.result.population_estimate).toLocaleString()} people (estimated)` : null} detail={exposureAvailable ? `${exposure.result?.source || 'Sourced estimate'}${exposure.result?.method ? ` · ${exposure.result.method.replaceAll('_', ' ')}` : ''}` : exposure?.status === 'ERROR' ? exposure.reason : 'No sourced population estimate is attached to this candidate.'} />
       </div>
+      <div className="candidate-integrity-note"><span>Evidence boundary</span><p>This record describes a satellite observation. It does not verify an active fire.</p></div>
+      <details className="candidate-reference"><summary>Technical record reference</summary><code>{event.event_id}</code><span>Historical replay · Punjab and Haryana</span></details>
     </div>
     <div id="investigation-panel" className="detail-tab-panel" role="tabpanel" aria-labelledby="investigation-tab" hidden={activeTab !== 'investigation'}>
     <div className="investigation-report" aria-live="polite">
@@ -164,6 +168,22 @@ export default function EventDetail({ event, onClose, initialTab = 'event' }) {
     </div>
     </div>
   </section>;
+}
+
+function ContextCard({ icon, title, state, value, detail, evidenceIds }) {
+  const available = state === 'AVAILABLE';
+  const loading = !state || state === 'LOADING';
+  const failed = state === 'ERROR';
+  return <article className={`event-feature-card${available ? ' context-available' : ''}`}>
+    <div className="context-card-heading"><span className="context-card-icon">{icon}</span><h4>{title}</h4><span className={`context-state${available ? ' is-available' : ''}`}>{loading ? 'Checking' : available ? 'Available' : failed ? 'Unavailable' : 'Not attached'}</span></div>
+    <strong>{available ? value || 'Source record attached' : loading ? 'Checking linked records…' : failed ? 'Could not load this context' : 'No source record attached'}</strong>
+    <p>{detail}</p>
+    {evidenceIds?.length > 0 && <small>Evidence IDs: {evidenceIds.join(', ')}</small>}
+  </article>;
+}
+
+function formatSource(source) {
+  return source === 'GK2A_AMI' ? 'GK2A AMI' : source.replaceAll('_', ' ');
 }
 
 function StatusBadge({ status }) {
