@@ -28,7 +28,7 @@
 - [x] Missing evidence remains explicitly unavailable and is not treated as negative evidence
 - [x] CloudWatch logs capture API and worker execution; the verified worker invocation completed without errors
 - [x] Replay uses persisted historical timestamps and is labeled as replay
-- [x] Human outcome append-only persistence is implemented; protected write deployment is pending
+- [x] Human outcome append-only persistence is implemented; reviewer JWT routes are deployed and reject anonymous writes
 - [x] Frontend loading, error, empty, and partial-availability states exist
 - [x] Responsive layouts are implemented; browser visual acceptance is still pending
 - [x] Unit tests and production builds pass locally (see `docs/CHECKLIST.md` for dated counts)
@@ -38,8 +38,7 @@
 
 ### Remaining release gates
 
-- Reviewer JWT routes deployed and anonymous-write rejection verified.
-- Reviewer-account outcome submission verified end to end.
+- Reviewer-account outcome submission verified end to end (requires a provisioned reviewer account).
 - Browser visual/keyboard review at desktop and mobile widths.
 - Independent FIRMS reference data, attached coverage records, and score-ready
   replay rows; without these, sensor-gap and automatic-qualification demos

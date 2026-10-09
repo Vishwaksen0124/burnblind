@@ -120,7 +120,8 @@ and IDs when creating that stack. For this repository those IDs are
 - [x] DeepSeek model ID and worker environment configured
 - [x] investigation worker environment configured
 - [x] public Amplify URL returns HTTP 200
-- [ ] Reviewer Cognito authorizer deployed and authenticated mutation smoke tested
+- [x] Reviewer Cognito authorizer deployed; prefixed and unprefixed anonymous mutations return 401
+- [ ] Authenticated reviewer mutation smoke test (requires a provisioned reviewer account)
 
 ## 5. Smoke tests
 

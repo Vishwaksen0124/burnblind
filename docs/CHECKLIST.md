@@ -11,15 +11,15 @@ not imply that its live data source or deployed AWS path has been verified.
 | Frontend | Landing, monitoring, event detail, investigation, replay, and methodology views; responsive map-first UI; Amplify CI deployment returned HTTP 200 | Browser interaction and visual review at desktop/mobile widths |
 | Feature upgrade | Scoring, comparison, exposure, replay, human outcome, event-scoped agent paths exist in code | Attach complete historical/coverage/score evidence to replay; live-source validation |
 | Agent | Strands integration, event-scoped evidence packet/report, DeepSeek V3.2 Mantle; one post-deployment investigation completed and appeared in the persisted investigations API | Broader scenario evaluation and failure/retry integration tests |
-| AWS | Amplify and backend OIDC workflows passed; SAM stack deployed; health, summary, event, action-center, investigation, map-layer and CORS smoke checks passed; one queue-to-report flow verified | Security/cost review and ongoing operational verification |
+| AWS | Amplify and backend OIDC workflows passed; SAM stack deployed; health, summary, event, action-center, investigation, map-layer and CORS smoke checks passed; one queue-to-report flow verified; Cognito JWT protects both API path forms and anonymous mutation probes return 401 | Invited-reviewer write test, security/cost review and ongoing operational verification |
 | Data | GK2A replay sample is present; weather and WorldPop adapters are implemented | FIRMS key/reference data, licensing review, live source checks, full artifact lifecycle |
 | Quality | 78 tests, production frontend build, SAM validation, API/queue/model smoke checks | Browser e2e, broader integration, security and cost review |
 
 The backend and model path were verified on 2026-10-09. Reviewer JWT
-authentication is implemented in the API, SAM template, and frontend, but its
-deployment and anonymous-write rejection smoke test must pass before marking
-the security gate complete. An invited reviewer outcome also needs a real
-account to validate end to end.
+authentication is deployed in API Gateway, the Lambda handler, and frontend.
+Both `/api` and unprefixed protected POST routes were probed anonymously and
+returned 401; public event reads returned 200. A real invited reviewer is
+still needed to complete the authenticated sign-in and outcome-write check.
 
 ## Hackathon
 
@@ -107,7 +107,9 @@ account to validate end to end.
 - [ ] Integration tests
 - [x] Agent grounding and event-scope tests
 - [x] One event-scoped queue → Strands/DeepSeek → DynamoDB → investigations API happy path verified
-- [ ] Security review including authenticated human-review submissions
+- [x] Anonymous investigation/review mutation probes rejected by the deployed JWT routes
+- [ ] Authenticated reviewer sign-in and human-review submission
+- [ ] Broader security and cost review
 - [x] Backend and public frontend deployment smoke checks
 - [ ] Demo rehearsal
 - [x] Public GitHub

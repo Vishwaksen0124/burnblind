@@ -154,27 +154,27 @@ Every feature:
 ## Phase 9 — S3
 
 - [x] private encrypted bucket in SAM template
-- [ ] bucket use for deployed replay artifacts
+- [x] bucket use for deployed replay JSONL and provenance manifest
 - [ ] raw prefix
 - [ ] processed prefix
 - [ ] historical prefix
 - [ ] investigation artifact prefix
-- [ ] encryption
+- [x] bucket encryption
 - [ ] versioning where useful
 - [ ] lifecycle policy
 - [ ] IAM
 - [ ] upload/read tests
-- [ ] public-access block verified
+- [x] S3 public-access block verified with AWS CLI
 
 ## Phase 10 — SQS
 
 - [ ] processing queue
-- [ ] investigation queue
-- [ ] DLQ
-- [ ] visibility timeout
-- [ ] retry policy
-- [ ] idempotency
-- [ ] poison-message behavior
+- [x] investigation FIFO queue
+- [x] FIFO DLQ
+- [x] visibility timeout exceeds worker timeout
+- [x] bounded retry policy
+- [x] event-keyed persistence prevents duplicate queue requests
+- [x] poison messages retry to the configured DLQ
 - [ ] worker failure tests
 
 ## Phase 11 — Lambda
@@ -189,18 +189,18 @@ Every feature:
 - [ ] scoring
 - [ ] impact
 - [x] API
-- [ ] investigation launcher
+- [x] investigation launcher and SQS worker
 
 ## Phase 12 — DynamoDB
 
 - [x] Events table
-- [ ] Investigations table
+- [x] Investigations table
 - [x] event keys and `data-mode-detected-at` index
-- [ ] status fields
-- [ ] timestamps
-- [ ] version/concurrency handling
+- [x] status fields
+- [x] application-owned request/start/completion timestamps
+- [x] conditional writes for duplicate requests and failed-run retries
 - [ ] TTL policy if appropriate
-- [ ] persistence
+- [x] persistence
 - [ ] concurrency tests
 
 ## Phase 13 — EventBridge
@@ -287,7 +287,7 @@ Source assembly happens before model invocation. The model receives only the eve
 - [ ] EventBridge
 - [x] API Gateway HTTP API
 - [x] CloudWatch API log group with 14-day retention
-- [x] Amplify manual frontend hosting
+- [x] Automated GitHub Actions publishing to Amplify through its deployment API
 - [x] least-privilege read policy for API Lambda
 - [x] API table and CORS environment configuration
 - [x] AWS API/data stack deployed (API Gateway, Lambda, DynamoDB, private S3)
@@ -298,13 +298,16 @@ Source assembly happens before model invocation. The model receives only the eve
 - [x] public Amplify dashboard deployed and returned HTTP 200
 - [x] Dedicated backend GitHub OIDC deploy role and CloudFormation runtime boundary provisioned
 - [x] First automated SAM backend deployment and cloud smoke test (OIDC workflow passed; runtime API/model flow verified)
-- [ ] Reviewer Cognito authorizer deployment and authenticated mutation smoke test
+- [x] Reviewer Cognito JWT authorizer deployed; prefixed and unprefixed anonymous POST probes return 401
+- [ ] Authenticated reviewer mutation smoke test (requires a provisioned account)
 
 The Amplify and SAM publishing workflows are automated GitHub Actions
 deployments using repository-scoped OIDC roles. The first backend deployment,
 one event-scoped Strands/DeepSeek investigation, and the public frontend HTTP
-smoke test passed on 2026-10-09. The protected reviewer routes in this change
-still require a subsequent deployment and anonymous/authenticated route checks.
+smoke test passed on 2026-10-09. Reviewer JWT routes now protect both public
+path forms; anonymous requests were rejected at API Gateway while public event
+reads remained available. The signed-in reviewer write still needs a provisioned
+account for end-to-end validation.
 
 ## Phase 19 — End-to-end
 
