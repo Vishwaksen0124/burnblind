@@ -59,11 +59,25 @@ class EnvironmentalAnalysisService:
 
         coverage = [row for row in self.evidence.list_for_event(event_id)
                     if row.get("evidence_type") == "SENSOR_COVERAGE"]
-        blind_spot = {
-            "status": "UNAVAILABLE",
-            "detail": "Blind-spot scoring requires sourced sensor coverage and quality measurements.",
-            "evidence_ids": [row.get("observation_id") for row in coverage if row.get("observation_id")],
-        }
+        coverage_ids = [row.get("observation_id") for row in coverage if row.get("observation_id")]
+        valid_coverage = [
+            row for row in coverage
+            if isinstance(row.get("record"), dict)
+            and row["record"].get("quality_valid") is True
+        ]
+        blind_spot = (
+            {
+                "status": "AVAILABLE",
+                "score": 0.0,
+                "detail": "Quality-valid independent sensor coverage is attached for this event.",
+                "evidence_ids": coverage_ids,
+            }
+            if valid_coverage else {
+                "status": "UNAVAILABLE",
+                "detail": "Blind-spot scoring requires sourced sensor coverage and quality measurements.",
+                "evidence_ids": coverage_ids,
+            }
+        )
         historical_context = {
             "status": "UNAVAILABLE",
             "detail": "No separately sourced historical fire-activity context is attached to this event.",
@@ -82,8 +96,8 @@ class EnvironmentalAnalysisService:
             "blind_spot": blind_spot,
             "monitoring_coverage": {
                 "status": "AVAILABLE" if coverage else "UNAVAILABLE",
-                "evidence_ids": blind_spot["evidence_ids"],
-                "detail": None if coverage else "No source-backed sensor coverage and quality record is attached.",
+                "evidence_ids": coverage_ids,
+                "detail": None if valid_coverage else "No source-backed sensor coverage and quality record is attached.",
             },
         }
         writer = getattr(self.events, "put_feature_context", None)
