@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from types import SimpleNamespace
 
-from boto3.dynamodb.types import TypeSerializer
+from botocore.exceptions import ClientError
 
 from backend.api.dynamodb_repository import DynamoCandidateEventRepository
 from backend.api.repository import EventFilters
@@ -117,23 +117,33 @@ def test_dynamo_repository_returns_heuristic_score_context():
     assert context["investigation_trigger_reasons"] == ["HIGH_PRIORITY"]
 
 
-def test_dynamo_repository_batch_feature_context_uses_base_table_key():
+def test_dynamo_repository_batch_feature_context_uses_native_table_keys():
     event, item = make_event("evt_000000000000000000000001", 1)
     item["blind_spot"] = {"status": "UNAVAILABLE"}
 
-    class BatchClient:
+    class ResourceStyleClient:
         def __init__(self):
             self.requests = []
 
         def batch_get_item(self, **kwargs):
             self.requests.append(kwargs)
-            serializer = TypeSerializer()
+            for key in kwargs["RequestItems"]["Events"]["Keys"]:
+                if isinstance(key.get("event_id"), dict):
+                    raise ClientError(
+                        {
+                            "Error": {
+                                "Code": "ValidationException",
+                                "Message": "The provided key element does not match the schema",
+                            }
+                        },
+                        "BatchGetItem",
+                    )
             return {"Responses": {"Events": [{
-                "event_id": serializer.serialize(item["event_id"]),
-                "blind_spot": serializer.serialize(item["blind_spot"]),
+                "event_id": item["event_id"],
+                "blind_spot": item["blind_spot"],
             }]}}
 
-    client = BatchClient()
+    client = ResourceStyleClient()
     table = SimpleNamespace(name="Events", meta=SimpleNamespace(client=client))
     repository = DynamoCandidateEventRepository("Events", table=table)
 
@@ -141,5 +151,5 @@ def test_dynamo_repository_batch_feature_context_uses_base_table_key():
         event.event_id: {"blind_spot": {"status": "UNAVAILABLE"}},
     }
     assert client.requests[0]["RequestItems"]["Events"]["Keys"] == [
-        {"event_id": {"S": event.event_id}},
+        {"event_id": event.event_id},
     ]
