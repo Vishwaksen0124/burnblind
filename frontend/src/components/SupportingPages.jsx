@@ -87,7 +87,6 @@ export function InvestigationsPage() {
     const reviewed = Boolean(item.latest_review);
     if (filter === 'REVIEW') return reviewed;
     if (filter === 'REQUIRES_REVIEW') return !reviewed && ['COMPLETED', 'FAILED'].includes(item.status);
-    if (filter === 'NOT_REVIEWED') return !reviewed && ['QUEUED', 'RUNNING'].includes(item.status);
     return true;
   });
 
@@ -102,10 +101,9 @@ export function InvestigationsPage() {
           ['ALL', 'All investigations'],
           ['REVIEW', 'Reviewed'],
           ['REQUIRES_REVIEW', 'Requires review'],
-          ['NOT_REVIEWED', 'Not reviewed'],
         ].map(([value, label]) => <button key={value} type="button" className={`filter-button${filter === value ? ' active' : ''}`} aria-pressed={filter === value} onClick={() => setFilter(value)}>{label}<span>{items.filter((item) => {
           const reviewed = Boolean(item.latest_review);
-          return value === 'ALL' || (value === 'REVIEW' && reviewed) || (value === 'REQUIRES_REVIEW' && !reviewed && ['COMPLETED', 'FAILED'].includes(item.status)) || (value === 'NOT_REVIEWED' && !reviewed && ['QUEUED', 'RUNNING'].includes(item.status));
+          return value === 'ALL' || (value === 'REVIEW' && reviewed) || (value === 'REQUIRES_REVIEW' && !reviewed && ['COMPLETED', 'FAILED'].includes(item.status));
         }).length}</span></button>)}
       </nav>
       <section className="investigation-list" aria-label="Investigation reports">
