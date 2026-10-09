@@ -297,7 +297,14 @@ Source assembly happens before model invocation. The model receives only the eve
 - [x] CORS allows only the Amplify and local Vite origins
 - [x] public Amplify dashboard deployed and returned HTTP 200
 - [x] Dedicated backend GitHub OIDC deploy role and CloudFormation runtime boundary provisioned
-- [ ] First automated SAM backend deployment and cloud smoke test
+- [x] First automated SAM backend deployment and cloud smoke test (OIDC workflow passed; runtime API/model flow verified)
+- [ ] Reviewer Cognito authorizer deployment and authenticated mutation smoke test
+
+The Amplify and SAM publishing workflows are automated GitHub Actions
+deployments using repository-scoped OIDC roles. The first backend deployment,
+one event-scoped Strands/DeepSeek investigation, and the public frontend HTTP
+smoke test passed on 2026-10-09. The protected reviewer routes in this change
+still require a subsequent deployment and anonymous/authenticated route checks.
 
 ## Phase 19 — End-to-end
 

@@ -19,6 +19,9 @@ jobs:
       AWS_REGION: us-east-2
       AMPLIFY_APP_ID: d3k8g1d6au7814
       VITE_API_BASE_URL: https://ad4m8eny2m.execute-api.us-east-2.amazonaws.com/prod/api
+      VITE_COGNITO_REGION: us-east-2
+      VITE_COGNITO_USER_POOL_ID: ${{ vars.REVIEWER_USER_POOL_ID }}
+      VITE_COGNITO_CLIENT_ID: ${{ vars.REVIEWER_USER_POOL_CLIENT_ID }}
     steps:
       - uses: actions/checkout@v4
 

@@ -45,9 +45,38 @@ using `EVENT_TABLE=<stack output> EVIDENCE_TABLE=<stack output> python scripts/s
 Push frontend changes to `main` to run `.github/workflows/amplify-deploy.yml`,
 which builds the frontend, audits npm dependencies, assumes the AWS deploy role
 through GitHub OIDC, and publishes the build to Amplify. The backend SAM stack
-is updated with `sam build` and `sam deploy` as shown above. The Amplify app is
-published by GitHub Actions rather than linked directly to a Git provider.
-Raw and processed archives are not deployed.
+is built and deployed by `.github/workflows/backend-deploy.yml` on relevant
+changes to `main`. Both pipelines use repository-scoped GitHub OIDC roles; no
+static AWS credentials are stored in GitHub. The Amplify app is published by
+GitHub Actions rather than linked directly to a Git provider. Raw and processed
+archives are not deployed.
+
+### Reviewer authentication
+
+The SAM stack provisions a Cognito user pool with self-registration disabled,
+a public app client, and an API Gateway JWT authorizer. Event and investigation
+reads remain public. Investigation requests and human-review outcome writes
+require the `aws.cognito.signin.user.admin` access-token scope. The Lambda
+handler also requires the validated JWT subject, which it stores as the review
+author. Cognito user-pool and client IDs are public configuration, not secrets.
+
+After the first authenticated backend deployment, set the Amplify workflow
+repository variables `REVIEWER_USER_POOL_ID` and
+`REVIEWER_USER_POOL_CLIENT_ID` from the stack outputs. The browser sign-in uses
+the Cognito user-pool API and keeps its short-lived session in session storage.
+Reviewer accounts must be provisioned by an AWS administrator; do not enable
+public sign-up. Example administrator action:
+
+```sh
+aws cognito-idp admin-create-user \
+  --user-pool-id "$REVIEWER_USER_POOL_ID" \\
+  --username reviewer@example.org \\
+  --user-attributes Name=email,Value=reviewer@example.org Name=email_verified,Value=true \
+  --region us-east-2
+```
+
+Do not commit a reviewer password or paste it into chat. Complete the temporary
+password challenge through the sign-in screen.
 
 The investigator uses Strands Agents with Amazon Bedrock DeepSeek V3.2
 (`deepseek.v3.2`) through the `bedrock-mantle` OpenAI-compatible endpoint in
@@ -80,7 +109,7 @@ and IDs when creating that stack. For this repository those IDs are
 - [x] 250-cluster replay sample seeded
 - [x] replay JSONL and provenance manifest stored in private S3
 - [x] API CORS verified for Amplify and local Vite origins
-- [x] Amplify manual app and production branch created
+- [x] Amplify app and production branch created
 - [x] FIFO investigation queue and dead-letter queue defined
 - [x] DynamoDB stream score qualification worker defined
 - [x] API Lambda deployed
@@ -91,6 +120,7 @@ and IDs when creating that stack. For this repository those IDs are
 - [x] DeepSeek model ID and worker environment configured
 - [x] investigation worker environment configured
 - [x] public Amplify URL returns HTTP 200
+- [ ] Reviewer Cognito authorizer deployed and authenticated mutation smoke tested
 
 ## 5. Smoke tests
 

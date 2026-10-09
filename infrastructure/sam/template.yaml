@@ -58,9 +58,55 @@ Resources:
         ThrottlingRateLimit: 2
       CorsConfiguration:
         AllowOrigins: [!Ref DashboardOrigin, !Ref LocalDashboardOrigin]
-        AllowHeaders: [Content-Type, X-Correlation-Id]
+        AllowHeaders: [Authorization, Content-Type, X-Correlation-Id]
         AllowMethods: [GET, POST, OPTIONS]
         MaxAge: 600
+      Auth:
+        Authorizers:
+          ReviewerJwt:
+            IdentitySource: '$request.header.Authorization'
+            JwtConfiguration:
+              issuer: !Sub 'https://cognito-idp.${AWS::Region}.${AWS::URLSuffix}/${ReviewerUserPool}'
+              audience:
+                - !Ref ReviewerUserPoolClient
+
+  ReviewerUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub '${AWS::StackName}-reviewers'
+      UserPoolTags:
+        Project: BurnBlind
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      AutoVerifiedAttributes: [email]
+      UsernameAttributes: [email]
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 12
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
+          TemporaryPasswordValidityDays: 7
+      Schema:
+        - AttributeDataType: String
+          Name: email
+          Required: true
+          Mutable: true
+
+  ReviewerUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref ReviewerUserPool
+      ClientName: !Sub '${AWS::StackName}-dashboard-reviewers'
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      PreventUserExistenceErrors: ENABLED
+      RefreshTokenValidity: 1
+      TokenValidityUnits:
+        RefreshToken: days
 
   EventsTable:
     Type: AWS::DynamoDB::Table
@@ -218,6 +264,24 @@ Resources:
             ApiId: !Ref BurnBlindApi
             Path: /
             Method: ANY
+        ReviewerInvestigationRequest:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BurnBlindApi
+            Path: /events/{event_id}/investigate
+            Method: POST
+            Auth:
+              Authorizer: ReviewerJwt
+              AuthorizationScopes: [aws.cognito.signin.user.admin]
+        ReviewerOutcomeSubmission:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BurnBlindApi
+            Path: /events/{event_id}/review
+            Method: POST
+            Auth:
+              Authorizer: ReviewerJwt
+              AuthorizationScopes: [aws.cognito.signin.user.admin]
     Metadata:
       BuildMethod: makefile
 
@@ -348,3 +412,7 @@ Outputs:
     Value: !Ref ReplayArtifactBucket
   DeepSeekModelId:
     Value: !Ref DeepSeekModelId
+  ReviewerUserPoolId:
+    Value: !Ref ReviewerUserPool
+  ReviewerUserPoolClientId:
+    Value: !Ref ReviewerUserPoolClient

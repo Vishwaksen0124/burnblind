@@ -33,6 +33,14 @@ Grant only required actions.
 - limit payload sizes
 - structured errors
 - CORS restricted to frontend origin when deployed
+- keep event and report reads public, but require a Cognito JWT for investigation
+  requests and human-review outcome writes
+- use an admin-created-only reviewer user pool; do not allow public registration
+- require the Cognito reviewer scope at API Gateway and verify reviewer identity
+  again in the Lambda handler
+- persist the authenticated Cognito subject on every review outcome
+- keep reviewer tokens in per-tab browser session storage and send access tokens
+  only to the protected API routes
 
 ## 5. Agent security
 

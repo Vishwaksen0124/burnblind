@@ -163,6 +163,7 @@ def handle_request(
     investigation_launcher: Any | None = None,
     review_store: Any | None = None,
     evidence_reader: Any | None = None,
+    reviewer_id: str | None = None,
 ) -> ApiResponse:
     query = query or {}
     correlation_id = request_id or str(uuid.uuid4())
@@ -184,7 +185,7 @@ def handle_request(
         "Content-Type": "application/json; charset=utf-8",
         "Access-Control-Allow-Origin": allow_origin,
         "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type,X-Correlation-Id",
+        "Access-Control-Allow-Headers": "Authorization,Content-Type,X-Correlation-Id",
         "X-Correlation-Id": correlation_id,
     }
 
@@ -293,7 +294,9 @@ def handle_request(
                         "reason": "No investigation has been requested for this historical candidate.",
                     }
             elif len(parts) == 4 and parts[3] == "investigate" and method == "POST":
-                if investigation_launcher is None:
+                if not reviewer_id:
+                    status, response = _error(401, "REVIEWER_AUTH_REQUIRED", "Sign in with an authorized reviewer account to request an investigation.")
+                elif investigation_launcher is None:
                     status, response = _error(
                         409,
                         "INVESTIGATION_NOT_READY",
@@ -315,7 +318,9 @@ def handle_request(
                 else:
                     status, response = 200, {"event_id": event.event_id, "items": review_store.list_for_event(event.event_id)}
             elif len(parts) == 4 and parts[3] == "review" and method == "POST":
-                if review_store is None:
+                if not reviewer_id:
+                    status, response = _error(401, "REVIEWER_AUTH_REQUIRED", "Sign in with an authorized reviewer account to record an outcome.")
+                elif review_store is None:
                     status, response = _error(503, "REVIEW_STORE_UNAVAILABLE", "Human review storage is not configured.")
                 else:
                     try:
@@ -329,7 +334,7 @@ def handle_request(
                     elif not isinstance(payload.get("notes", ""), str) or len(payload.get("notes", "")) > 1000:
                         status, response = _error(400, "INVALID_REVIEW", "notes must be text of at most 1000 characters.")
                     else:
-                        saved = review_store.record(event.event_id, payload["outcome"], payload.get("notes", "").strip(), correlation_id)
+                        saved = review_store.record(event.event_id, payload["outcome"], payload.get("notes", "").strip(), correlation_id, reviewer_id)
                         status, response = 201, {"event_id": event.event_id, "review": saved}
             elif len(parts) == 4 and parts[3] in {"sensor-comparison", "exposure"} and method == "GET":
                 context_reader = getattr(repository, "get_feature_context", None)
@@ -378,9 +383,13 @@ def lambda_handler(event: Mapping[str, Any], context: Any) -> dict[str, Any]:
     investigation_store, investigation_launcher = _investigation_services_from_environment()
     review_store = _review_store_from_environment()
     evidence_reader = _evidence_reader_from_environment()
+    authorizer = request_context.get("authorizer") or {}
+    jwt = authorizer.get("jwt") or {}
+    claims = jwt.get("claims") or {}
+    reviewer_id = claims.get("sub") if isinstance(claims, Mapping) else None
     response = handle_request(
         method, path, query, repository, request_id, event.get("body"), origin,
-        investigation_store, investigation_launcher, review_store, evidence_reader,
+        investigation_store, investigation_launcher, review_store, evidence_reader, reviewer_id,
     )
     return response.gateway_response()
 

@@ -74,8 +74,8 @@ def test_event_detail_and_investigation_are_grounded_in_available_state():
     assert detail.status_code == 200
     assert detail.body["score_status"] == "AWAITING_REQUIRED_FEATURES"
     assert investigation.body["investigation"] is None
-    assert queue.status_code == 409
-    assert queue.body["error"]["code"] == "INVESTIGATION_NOT_READY"
+    assert queue.status_code == 401
+    assert queue.body["error"]["code"] == "REVIEWER_AUTH_REQUIRED"
 
 
 def test_investigation_queue_returns_accepted_and_current_status():
@@ -98,6 +98,7 @@ def test_investigation_queue_returns_accepted_and_current_status():
     queued = handle_request(
         "POST", f"/events/{event_id}/investigate", {}, repository(), "request-456",
         investigation_launcher=Launcher(),
+        reviewer_id="reviewer-sub-123",
     )
     current = handle_request(
         "GET", f"/events/{event_id}/investigation", {}, repository(),
@@ -124,8 +125,8 @@ def test_review_outcomes_are_validated_and_persisted():
     class ReviewStore:
         items = []
 
-        def record(self, event_id, outcome, notes, request_id):
-            saved = {"event_id": event_id, "outcome": outcome, "notes": notes, "request_id": request_id}
+        def record(self, event_id, outcome, notes, request_id, reviewer_id):
+            saved = {"event_id": event_id, "outcome": outcome, "notes": notes, "request_id": request_id, "reviewer_id": reviewer_id}
             self.items.append(saved)
             return saved
 
@@ -138,16 +139,42 @@ def test_review_outcomes_are_validated_and_persisted():
         "POST", f"/events/{event_id}/review", {}, repository(), "review-request",
         body=json.dumps({"outcome": "NEEDS_VERIFICATION", "notes": "Compare a later pass."}),
         review_store=store,
+        reviewer_id="reviewer-sub-123",
     )
     listed = handle_request("GET", f"/events/{event_id}/review", {}, repository(), review_store=store)
     invalid = handle_request(
         "POST", f"/events/{event_id}/review", {}, repository(),
-        body=json.dumps({"outcome": "EVACUATE"}), review_store=store,
+        body=json.dumps({"outcome": "EVACUATE"}), review_store=store, reviewer_id="reviewer-sub-123",
     )
 
     assert saved.status_code == 201
     assert listed.body["items"][0]["outcome"] == "NEEDS_VERIFICATION"
+    assert listed.body["items"][0]["reviewer_id"] == "reviewer-sub-123"
     assert invalid.status_code == 400
+
+
+def test_investigation_and_human_outcome_mutations_require_reviewer_identity():
+    class Launcher:
+        def enqueue(self, *_):
+            raise AssertionError("unauthenticated request reached the queue")
+
+    class Store:
+        def record(self, *_):
+            raise AssertionError("unauthenticated request reached persistence")
+
+    event_id = "evt_000000000000000000000001"
+    investigation = handle_request(
+        "POST", f"/events/{event_id}/investigate", {}, repository(),
+        investigation_launcher=Launcher(),
+    )
+    review = handle_request(
+        "POST", f"/events/{event_id}/review", {}, repository(),
+        body=json.dumps({"outcome": "NEEDS_VERIFICATION"}), review_store=Store(),
+    )
+
+    assert investigation.status_code == review.status_code == 401
+    assert investigation.body["error"]["code"] == "REVIEWER_AUTH_REQUIRED"
+    assert review.body["error"]["code"] == "REVIEWER_AUTH_REQUIRED"
 
 
 def test_replay_endpoint_respects_requested_historical_time():

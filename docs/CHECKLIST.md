@@ -13,11 +13,13 @@ not imply that its live data source or deployed AWS path has been verified.
 | Agent | Strands integration, event-scoped evidence packet/report, DeepSeek V3.2 Mantle; one post-deployment investigation completed and appeared in the persisted investigations API | Broader scenario evaluation and failure/retry integration tests |
 | AWS | Amplify and backend OIDC workflows passed; SAM stack deployed; health, summary, event, action-center, investigation, map-layer and CORS smoke checks passed; one queue-to-report flow verified | Security/cost review and ongoing operational verification |
 | Data | GK2A replay sample is present; weather and WorldPop adapters are implemented | FIRMS key/reference data, licensing review, live source checks, full artifact lifecycle |
-| Quality | 77 tests, production frontend build, SAM validation, API/queue/model smoke checks | Browser e2e, broader integration, security and cost review |
+| Quality | 78 tests, production frontend build, SAM validation, API/queue/model smoke checks | Browser e2e, broader integration, security and cost review |
 
-The missing SAM transform permission has now been applied to the dedicated
-CloudFormation execution role. Backend deployment and the model invocation
-remain unverified until the next workflow and deployed API smoke check pass.
+The backend and model path were verified on 2026-10-09. Reviewer JWT
+authentication is implemented in the API, SAM template, and frontend, but its
+deployment and anonymous-write rejection smoke test must pass before marking
+the security gate complete. An invited reviewer outcome also needs a real
+account to validate end to end.
 
 ## Hackathon
 
@@ -101,12 +103,12 @@ remain unverified until the next workflow and deployed API smoke check pass.
 - [ ] Cost guardrails verified
 
 
-- [x] Unit tests (77 passing locally, 2026-10-09)
+- [x] Unit tests (78 passing locally, 2026-10-09)
 - [ ] Integration tests
 - [x] Agent grounding and event-scope tests
-- [ ] End-to-end test against the newly deployed backend
+- [x] One event-scoped queue → Strands/DeepSeek → DynamoDB → investigations API happy path verified
 - [ ] Security review including authenticated human-review submissions
-- [ ] Deployment smoke test
+- [x] Backend and public frontend deployment smoke checks
 - [ ] Demo rehearsal
 - [x] Public GitHub
 - [x] Public demo URL

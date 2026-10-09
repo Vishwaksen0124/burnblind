@@ -227,6 +227,27 @@ Resources:
                   - s3:PutBucketTagging
                   - s3:GetBucketTagging
                 Resource: '*'
+              - Sid: ManageBurnBlindReviewerUserPool
+                Effect: Allow
+                Action:
+                  - cognito-idp:DeleteUserPool
+                  - cognito-idp:DescribeUserPool
+                  - cognito-idp:UpdateUserPool
+                  - cognito-idp:CreateUserPoolClient
+                  - cognito-idp:DeleteUserPoolClient
+                  - cognito-idp:DescribeUserPoolClient
+                  - cognito-idp:UpdateUserPoolClient
+                  - cognito-idp:TagResource
+                  - cognito-idp:UntagResource
+                  - cognito-idp:ListTagsForResource
+                Resource: !Sub 'arn:${AWS::Partition}:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*'
+              - Sid: CreateTaggedBurnBlindReviewerUserPool
+                Effect: Allow
+                Action: cognito-idp:CreateUserPool
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    aws:RequestTag/Project: BurnBlind
               - Sid: CreateOnlyBoundBurnBlindRuntimeRoles
                 Effect: Allow
                 Action:

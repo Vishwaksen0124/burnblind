@@ -4,6 +4,7 @@ import ProductPage from './components/ProductPage.jsx';
 import { DataPage, HowItWorksPage, InvestigationsPage } from './components/SupportingPages.jsx';
 import ReplayPage from './components/ReplayPage.jsx';
 import { Header } from './components/shared.jsx';
+import { ReviewerAuthProvider } from './reviewerAuth.jsx';
 
 const pages = {
   '#home': 'home',
@@ -15,6 +16,10 @@ const pages = {
 };
 
 function App() {
+  return <ReviewerAuthProvider><Application /></ReviewerAuthProvider>;
+}
+
+function Application() {
   const [page, setPage] = useState(pages[window.location.hash] || 'home');
   useEffect(() => {
     const syncPage = () => {

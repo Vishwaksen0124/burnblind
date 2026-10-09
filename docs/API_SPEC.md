@@ -130,4 +130,16 @@ For the hackathon demo:
 - expose read-only event APIs publicly where possible
 - keep mutation endpoints restricted to required operations
 
-Authentication is optional for the MVP, but public mutation endpoints must not allow arbitrary event updates.
+Event, investigation, and replay reads remain public. These two mutation routes
+require a Cognito access token accepted by the API Gateway `ReviewerJwt`
+authorizer and the `aws.cognito.signin.user.admin` scope:
+
+- `POST /events/{event_id}/investigate`
+- `POST /events/{event_id}/review`
+
+Anonymous requests receive `401`; reviewer accounts are administrator-created
+and public self-registration is disabled. The API Lambda also requires the
+validated JWT subject before processing either write. Store that subject with
+human review outcomes as the reviewer identifier. Pool and app-client IDs are
+public frontend configuration; passwords and tokens are never stored in source
+control. See `docs/SECURITY.md` and `docs/DEPLOYMENT.md` for provisioning.

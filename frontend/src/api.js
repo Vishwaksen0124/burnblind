@@ -1,13 +1,18 @@
+import { getValidReviewerToken } from './auth.js';
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 const MAX_THROTTLE_RETRIES = 4;
 
-async function request(path, { signal, method = 'GET', body } = {}) {
+async function request(path, { signal, method = 'GET', body, reviewerToken } = {}) {
   let response;
+  const validReviewerToken = reviewerToken ? await getValidReviewerToken() : null;
   for (let attempt = 0; ; attempt += 1) {
+    const headers = method === 'POST' ? { 'Content-Type': 'application/json' } : {};
+    if (validReviewerToken) headers.Authorization = `Bearer ${validReviewerToken}`;
     response = await fetch(`${API_BASE}${path}`, {
       method,
       signal,
-      headers: method === 'POST' ? { 'Content-Type': 'application/json' } : undefined,
+      headers: Object.keys(headers).length ? headers : undefined,
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     if (response.status !== 429 || attempt >= MAX_THROTTLE_RETRIES) break;
@@ -58,8 +63,8 @@ export const getReplay = (at, signal, limit = 100, cursor) => request(`/replay?a
 export const getEvent = (id, signal) => request(`/events/${encodeURIComponent(id)}`, { signal });
 export const getInvestigation = (id, signal) => request(`/events/${encodeURIComponent(id)}/investigation`, { signal });
 export const getInvestigations = (signal, limit = 50, cursor) => request(`/investigations?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`, { signal });
-export const requestInvestigation = (id) => request(`/events/${encodeURIComponent(id)}/investigate`, { method: 'POST' });
+export const requestInvestigation = (id, reviewerToken) => request(`/events/${encodeURIComponent(id)}/investigate`, { method: 'POST', reviewerToken });
 export const getReviewOutcomes = (id, signal) => request(`/events/${encodeURIComponent(id)}/review`, { signal });
-export const submitReviewOutcome = (id, outcome, notes) => request(`/events/${encodeURIComponent(id)}/review`, { method: 'POST', body: { outcome, notes } });
+export const submitReviewOutcome = (id, outcome, notes, reviewerToken) => request(`/events/${encodeURIComponent(id)}/review`, { method: 'POST', body: { outcome, notes }, reviewerToken });
 export const getSensorComparison = (id, signal) => request(`/events/${encodeURIComponent(id)}/sensor-comparison`, { signal });
 export const getExposure = (id, signal) => request(`/events/${encodeURIComponent(id)}/exposure`, { signal });

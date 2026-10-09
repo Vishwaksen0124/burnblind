@@ -17,6 +17,10 @@
 - No static AWS credentials are required in GitHub. The backend workflow reads
   only these repository variables: `AWS_BACKEND_DEPLOY_ROLE_ARN` and
   `BURNBLIND_CFN_EXECUTION_ROLE_ARN`.
+- The Amplify build reads public, non-secret reviewer configuration from
+  `REVIEWER_USER_POOL_ID` and `REVIEWER_USER_POOL_CLIENT_ID`. These are Cognito
+  resource identifiers, not credentials. Reviewer passwords and tokens are
+  never CI variables or secrets.
 
 The publisher uses Amplify's manual deployment API. That is the deployment
 mechanism; the CI/CD trigger and build are automatic on every push to `main`.

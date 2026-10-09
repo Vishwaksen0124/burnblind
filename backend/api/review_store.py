@@ -29,7 +29,7 @@ class DynamoReviewOutcomeStore:
         )
         return response.get("Items", [])
 
-    def record(self, event_id: str, outcome: str, notes: str, request_id: str) -> dict[str, Any]:
+    def record(self, event_id: str, outcome: str, notes: str, request_id: str, reviewer_id: str) -> dict[str, Any]:
         if outcome not in REVIEW_OUTCOMES:
             raise ValueError("unsupported review outcome")
         reviewed_at = datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
@@ -39,6 +39,7 @@ class DynamoReviewOutcomeStore:
             "outcome": outcome,
             "notes": notes,
             "request_id": request_id,
+            "reviewer_id": reviewer_id,
         }
         self._table.put_item(Item=item, ConditionExpression="attribute_not_exists(event_id) AND attribute_not_exists(reviewed_at_utc)")
         return item

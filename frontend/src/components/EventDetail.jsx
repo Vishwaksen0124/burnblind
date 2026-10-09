@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getExposure, getInvestigation, getReviewOutcomes, getSensorComparison, requestInvestigation, submitReviewOutcome } from '../api.js';
 import { formatCoordinate, formatTimestamp } from '../lib/eventView.js';
+import { useReviewerAuth } from '../reviewerAuth.jsx';
 
 const ACTIVE_STATUSES = new Set(['QUEUED', 'RUNNING']);
 
 export default function EventDetail({ event, onClose }) {
+  const reviewerAuth = useReviewerAuth();
   const [record, setRecord] = useState(null);
   const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState(false);
@@ -59,10 +61,14 @@ export default function EventDetail({ event, onClose }) {
   }, [refresh]);
 
   async function startInvestigation() {
+    if (!reviewerAuth.session) {
+      reviewerAuth.openSignIn('Sign in with an invited reviewer account to request an investigation for this event.');
+      return;
+    }
     setRequesting(true);
     setError('');
     try {
-      const result = await requestInvestigation(event.event_id);
+      const result = await requestInvestigation(event.event_id, reviewerAuth.session.token);
       setRecord((current) => ({ ...current, status: result.status }));
       await refresh();
     } catch (err) {
@@ -74,10 +80,14 @@ export default function EventDetail({ event, onClose }) {
 
   async function saveReview(eventValue) {
     eventValue.preventDefault();
+    if (!reviewerAuth.session) {
+      reviewerAuth.openSignIn('Sign in with an invited reviewer account to record a human review outcome.');
+      return;
+    }
     setReviewBusy(true);
     setReviewError('');
     try {
-      const value = await submitReviewOutcome(event.event_id, reviewOutcome, reviewNotes);
+      const value = await submitReviewOutcome(event.event_id, reviewOutcome, reviewNotes, reviewerAuth.session.token);
       setReviews((current) => [value.review, ...current]);
       setReviewNotes('');
     } catch (err) {
@@ -134,13 +144,14 @@ export default function EventDetail({ event, onClose }) {
       {error && <p className="report-error" role="alert">{error}</p>}
       {report && <InvestigationFindings report={report} />}
       <section className="human-review" aria-labelledby="human-review-title">
-        <div className="human-review-heading"><div><p className="eyebrow">HUMAN REVIEW</p><h4 id="human-review-title">Record an outcome</h4></div><span>PUBLIC DEMO · SUBMITTER NOT AUTHENTICATED</span></div>
+        <div className="human-review-heading"><div><p className="eyebrow">HUMAN REVIEW</p><h4 id="human-review-title">Record an outcome</h4></div><span>{reviewerAuth.session ? `SIGNED IN · ${reviewerAuth.session.email}` : 'INVITED REVIEWER ACCESS REQUIRED'}</span></div>
         {reviews.length > 0 && <p className="latest-review">Latest outcome: <strong>{reviews[0].outcome.replaceAll('_', ' ')}</strong>{reviews[0].reviewed_at_utc && <time dateTime={reviews[0].reviewed_at_utc}> · {formatTimestamp(reviews[0].reviewed_at_utc)}</time>}</p>}
         {reviewError && <p className="report-error" role="alert">Review history unavailable: {reviewError}</p>}
+        {!reviewerAuth.session && <p className="reviewer-required">Human review submissions are restricted to invited BurnBlind reviewers. <button type="button" className="text-button" onClick={() => reviewerAuth.openSignIn('Sign in to save a review outcome for this event.')}>Sign in</button></p>}
         <form onSubmit={saveReview}>
           <label>Outcome<select value={reviewOutcome} onChange={(change) => setReviewOutcome(change.target.value)}><option value="NEEDS_VERIFICATION">Needs verification</option><option value="CONFIRMED">Confirmed by reviewer</option><option value="FALSE_POSITIVE">False positive</option><option value="INSUFFICIENT_EVIDENCE">Insufficient evidence</option></select></label>
           <label>Notes <span>(optional)</span><textarea value={reviewNotes} onChange={(change) => setReviewNotes(change.target.value)} maxLength={1000} rows={2} placeholder="Add a short source-backed note" /></label>
-          <button className="action-button" type="submit" disabled={reviewBusy}>{reviewBusy ? 'Saving…' : 'Save review outcome'}</button>
+          <button className="action-button" type="submit" disabled={reviewBusy || !reviewerAuth.session}>{reviewBusy ? 'Saving…' : 'Save review outcome'}</button>
         </form>
       </section>
     </div>

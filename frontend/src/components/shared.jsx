@@ -1,6 +1,8 @@
 import { Flame, Satellite } from 'lucide-react';
+import { useReviewerAuth } from '../reviewerAuth.jsx';
 
 export function Header({ page }) {
+  const reviewerAuth = useReviewerAuth();
   const links = [
     ['monitoring', '#monitoring', 'Monitoring'],
     ['replay', '#replay', 'Replay'],
@@ -18,6 +20,9 @@ export function Header({ page }) {
       {links.map(([id, href, label]) => <a key={id} href={href} aria-current={page === id ? 'page' : undefined}>{label}</a>)}
     </nav>
     <span className="mode-badge"><i /> HISTORICAL REPLAY · 2025</span>
+    {reviewerAuth.session
+      ? <button className="reviewer-access" onClick={() => reviewerAuth.signOut().catch(() => {})} title={reviewerAuth.session.email}>Sign out</button>
+      : <button className="reviewer-access" onClick={() => reviewerAuth.openSignIn()}>Reviewer sign in</button>}
     {page !== 'monitoring' && <a className="landing-nav-cta" href="#monitoring">Explore monitoring <span aria-hidden="true">→</span></a>}
   </header>;
 }
