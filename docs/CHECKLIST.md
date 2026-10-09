@@ -10,10 +10,10 @@ not imply that its live data source or deployed AWS path has been verified.
 | --- | --- | --- |
 | Frontend | Landing, monitoring, event detail, investigation, replay, and methodology views; responsive map-first UI; Amplify CI deployment returned HTTP 200 | Browser interaction and visual review at desktop/mobile widths |
 | Feature upgrade | Scoring, comparison, exposure, replay, human outcome, event-scoped agent paths exist in code | Attach complete historical/coverage/score evidence to replay; live-source validation |
-| Agent | Strands integration, event-scoped evidence packet/report, DeepSeek V3.2 Mantle; one post-deployment investigation completed and appeared in the persisted investigations API | Broader scenario evaluation and failure/retry integration tests |
+| Agent | Strands integration, event-scoped evidence packet/report, DeepSeek V3.2 Mantle; cross-sensor status handling and retry race regressions covered by unit tests | Broader model scenario evaluation and live integration coverage |
 | AWS | Amplify and backend OIDC workflows passed; SAM stack deployed; health, summary, event, action-center, investigation, map-layer and CORS smoke checks passed; one queue-to-report flow verified; Cognito JWT protects both API path forms and anonymous mutation probes return 401 | Invited-reviewer write test, security/cost review and ongoing operational verification |
 | Data | GK2A replay sample is present; weather and WorldPop adapters are implemented | FIRMS key/reference data, licensing review, live source checks, full artifact lifecycle |
-| Quality | 78 tests, production frontend build, SAM validation, API/queue/model smoke checks | Browser e2e, broader integration, security and cost review |
+| Quality | 91 tests, production frontend build, SAM validation, API/queue/model smoke checks | Browser e2e, broader integration, security and cost review |
 
 The backend and model path were verified on 2026-10-09. Reviewer JWT
 authentication is deployed in API Gateway, the Lambda handler, and frontend.
@@ -103,9 +103,9 @@ still needed to complete the authenticated sign-in and outcome-write check.
 - [ ] Cost guardrails verified
 
 
-- [x] Unit tests (78 passing locally, 2026-10-09)
+- [x] Unit tests (91 passing locally, 2026-10-09)
 - [ ] Integration tests
-- [x] Agent grounding and event-scope tests
+- [x] Agent grounding, event-scope, sensor-comparison, output-schema, and retry-race tests
 - [x] One event-scoped queue → Strands/DeepSeek → DynamoDB → investigations API happy path verified
 - [x] Anonymous investigation/review mutation probes rejected by the deployed JWT routes
 - [ ] Authenticated reviewer sign-in and human-review submission
@@ -147,7 +147,7 @@ still needed to complete the authenticated sign-in and outcome-write check.
 
 ## Local verification and remaining release gates (2026-10-09)
 
-- [x] pytest -q: 77 passed
+- [x] pytest -q: 91 passed (2026-10-09)
 - [x] npm run build: Vite production build passed
 - [x] sam validate --lint --template-file infrastructure/sam/template.yaml
 - [x] sam build --template-file infrastructure/sam/template.yaml

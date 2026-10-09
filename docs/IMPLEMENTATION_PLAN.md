@@ -201,7 +201,7 @@ Every feature:
 - [x] conditional writes for duplicate requests and failed-run retries
 - [ ] TTL policy if appropriate
 - [x] persistence
-- [ ] concurrency tests
+- [x] Unit tests for concurrent failed-retry races and duplicate queue dispatch (not a live DynamoDB load test)
 
 ## Phase 13 — EventBridge
 
@@ -244,10 +244,10 @@ Source assembly happens before model invocation. The model receives only the eve
 - [ ] 10+ model evaluation scenarios (requires additional source fixtures)
 - [ ] expected evidence
 - [ ] expected classification
-- [ ] missing-data tests
-- [ ] contradiction tests
+- [x] missing-data and sensor-agreement/disagreement regression tests
+- [x] contradiction citation and recommendation regression tests
 - [x] unsupported evidence ID rejection
-- [ ] structured-output validation
+- [x] structured-output validation rejects unsafe classifications/recommendations and empty recommendations
 
 ## Phase 16 — API
 
