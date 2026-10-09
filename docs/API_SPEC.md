@@ -67,6 +67,26 @@ include null scores and `score_status: AWAITING_REQUIRED_FEATURES`.
 
 Returns latest investigation if available.
 
+## Environmental analysis
+
+`POST /events/{event_id}/environmental-analysis` requires the reviewer JWT.
+It enqueues deterministic event-time weather, potential-exposure, and attached
+sensor-comparison enrichment. It does not invoke the Investigation Agent.
+The request returns `202` with `status: PROCESSING`; poll the read endpoint for
+completion:
+
+```text
+GET /events/{event_id}/environmental-analysis
+GET /events/{event_id}/exposure
+GET /events/{event_id}/sensor-comparison
+GET /map-layers?layer=exposure
+```
+
+Event-time wind comes from Open-Meteo ERA5. Population estimates use WorldPop
+Global2 within a documented directional screening corridor. Blind-spot values
+remain unavailable unless valid sensor coverage and quality inputs are
+attached. Missing second-sensor data is never interpreted as a non-detection.
+
 ## POST /events/{event_id}/investigate
 
 Explicitly requests an analyst override investigation for an existing
@@ -136,10 +156,12 @@ authorizer and the `aws.cognito.signin.user.admin` scope:
 
 - `POST /events/{event_id}/investigate`
 - `POST /events/{event_id}/review`
+- `POST /events/{event_id}/environmental-analysis`
 
 The deployed HTTP API registers both the `/api/...` browser paths and the
 unprefixed route forms above so the public proxy route cannot bypass JWT
-validation.
+validation. Environmental analysis is delivered through its own FIFO queue and
+Lambda with no model invocation permissions.
 
 Anonymous requests receive `401`; reviewer accounts are administrator-created
 and public self-registration is disabled. The API Lambda also requires the

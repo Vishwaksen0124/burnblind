@@ -173,6 +173,7 @@ def handle_request(
     review_store: Any | None = None,
     evidence_reader: Any | None = None,
     reviewer_id: str | None = None,
+    environmental_launcher: Any | None = None,
 ) -> ApiResponse:
     query = query or {}
     correlation_id = request_id or str(uuid.uuid4())
@@ -367,13 +368,31 @@ def handle_request(
                 if value is None:
                     context_key = "sensor_comparison" if parts[3] == "sensor-comparison" else "exposure"
                     value = (context or {}).get(context_key)
-                available = bool(value) and value.get("status") not in {"UNAVAILABLE", "INDEPENDENT_OBSERVATION_UNAVAILABLE"}
+                available = bool(value) and value.get("status") in {
+                    "AGREEMENT", "DISAGREEMENT", "INCONCLUSIVE", "OK", "ESTIMATED",
+                }
                 status, response = 200, {
                     "event_id": event.event_id,
                     "status": "AVAILABLE" if available else "UNAVAILABLE",
                     "result": value,
                     "reason": None if available else (value or {}).get("detail") or f"No sourced {key.replace('_', ' ')} record is attached to this event.",
                 }
+            elif len(parts) == 4 and parts[3] == "environmental-analysis" and method == "GET":
+                context_reader = getattr(repository, "get_feature_context", None)
+                context = context_reader(event.event_id) if context_reader else None
+                value = (context or {}).get("environmental_analysis")
+                status, response = 200, {"event_id": event.event_id, "status": (value or {}).get("status", "NOT_RUN"), "result": context}
+            elif len(parts) == 4 and parts[3] == "environmental-analysis" and method == "POST":
+                if not reviewer_id:
+                    status, response = _error(401, "REVIEWER_AUTH_REQUIRED", "Sign in with an authorized reviewer account to request environmental analysis.")
+                elif environmental_launcher is None:
+                    status, response = _error(503, "ENVIRONMENTAL_ANALYSIS_UNAVAILABLE", "Environmental analysis is not configured for this API instance.")
+                else:
+                    try:
+                        result = environmental_launcher.enqueue(event.event_id, correlation_id)
+                        status, response = 202, result
+                    except Exception:
+                        status, response = _error(503, "ENVIRONMENTAL_ANALYSIS_QUEUE_UNAVAILABLE", "Environmental analysis could not be queued. Try again later.")
             else:
                 status, response = _error(405, "METHOD_NOT_ALLOWED", "Method is not allowed for this resource.")
     else:
@@ -406,6 +425,7 @@ def lambda_handler(event: Mapping[str, Any], context: Any) -> dict[str, Any]:
     investigation_store, investigation_launcher = _investigation_services_from_environment()
     review_store = _review_store_from_environment()
     evidence_reader = _evidence_reader_from_environment()
+    environmental_launcher = _environmental_launcher_from_environment(repository)
     authorizer = request_context.get("authorizer") or {}
     jwt = authorizer.get("jwt") or {}
     claims = jwt.get("claims") or {}
@@ -413,6 +433,7 @@ def lambda_handler(event: Mapping[str, Any], context: Any) -> dict[str, Any]:
     response = handle_request(
         method, path, query, repository, request_id, event.get("body"), origin,
         investigation_store, investigation_launcher, review_store, evidence_reader, reviewer_id,
+        environmental_launcher,
     )
     return response.gateway_response()
 
@@ -460,3 +481,14 @@ def _evidence_reader_from_environment():
     from backend.agent.evidence import DynamoEvidenceRepository
 
     return DynamoEvidenceRepository(table_name, boto3.resource("dynamodb").Table(table_name))
+
+
+def _environmental_launcher_from_environment(repository):
+    queue_url = os.environ.get("ENVIRONMENTAL_ANALYSIS_QUEUE_URL")
+    if not queue_url:
+        return None
+    import boto3
+
+    from backend.features.environmental import EnvironmentalAnalysisLauncher
+
+    return EnvironmentalAnalysisLauncher(repository, queue_url, boto3.client("sqs"))

@@ -13,6 +13,7 @@ Globals:
         INVESTIGATION_TABLE: !Ref InvestigationsTable
         REVIEW_OUTCOME_TABLE: !Ref ReviewOutcomesTable
         INVESTIGATION_QUEUE_URL: !Ref InvestigationQueue
+        ENVIRONMENTAL_ANALYSIS_QUEUE_URL: !Ref EnvironmentalAnalysisQueue
         CORS_ALLOW_ORIGINS: !Join [",", [!Ref DashboardOrigin, !Ref LocalDashboardOrigin]]
     PermissionsBoundary: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/BurnBlindRuntimeBoundary'
 
@@ -217,6 +218,27 @@ Resources:
         deadLetterTargetArn: !GetAtt InvestigationDeadLetterQueue.Arn
         maxReceiveCount: 2
 
+  EnvironmentalAnalysisDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AWS::StackName}-environmental-analysis-dlq.fifo'
+      FifoQueue: true
+      SqsManagedSseEnabled: true
+      MessageRetentionPeriod: 1209600
+
+  EnvironmentalAnalysisQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AWS::StackName}-environmental-analysis.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      SqsManagedSseEnabled: true
+      VisibilityTimeout: 1500
+      MessageRetentionPeriod: 345600
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt EnvironmentalAnalysisDeadLetterQueue.Arn
+        maxReceiveCount: 2
+
   ReplayArtifactBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -243,6 +265,10 @@ Resources:
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref EventsTable
+        - Statement:
+            - Effect: Allow
+              Action: dynamodb:UpdateItem
+              Resource: !GetAtt EventsTable.Arn
         - DynamoDBReadPolicy:
             TableName: !Ref EvidenceTable
         - DynamoDBCrudPolicy:
@@ -251,6 +277,8 @@ Resources:
             TableName: !Ref ReviewOutcomesTable
         - SQSSendMessagePolicy:
             QueueName: !GetAtt InvestigationQueue.QueueName
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt EnvironmentalAnalysisQueue.QueueName
       Events:
         ApiProxy:
           Type: HttpApi
@@ -296,6 +324,24 @@ Resources:
           Properties:
             ApiId: !Ref BurnBlindApi
             Path: /api/events/{event_id}/review
+            Method: POST
+            Auth:
+              Authorizer: ReviewerJwt
+              AuthorizationScopes: [aws.cognito.signin.user.admin]
+        ReviewerEnvironmentalAnalysis:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BurnBlindApi
+            Path: /events/{event_id}/environmental-analysis
+            Method: POST
+            Auth:
+              Authorizer: ReviewerJwt
+              AuthorizationScopes: [aws.cognito.signin.user.admin]
+        ReviewerApiEnvironmentalAnalysis:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BurnBlindApi
+            Path: /api/events/{event_id}/environmental-analysis
             Method: POST
             Auth:
               Authorizer: ReviewerJwt
@@ -394,6 +440,46 @@ Resources:
     Metadata:
       BuildMethod: makefile
 
+  EnvironmentalAnalysisFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-environmental-analysis'
+      Timeout: 240
+      MemorySize: 512
+      CodeUri: ../../
+      Handler: backend.features.worker.lambda_handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - sqs:ReceiveMessage
+                - sqs:DeleteMessage
+                - sqs:ChangeMessageVisibility
+                - sqs:GetQueueAttributes
+              Resource: !GetAtt EnvironmentalAnalysisQueue.Arn
+        - DynamoDBReadPolicy:
+            TableName: !Ref EventsTable
+        - Statement:
+            - Effect: Allow
+              Action: dynamodb:UpdateItem
+              Resource: !GetAtt EventsTable.Arn
+        - DynamoDBReadPolicy:
+            TableName: !Ref EvidenceTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EvidenceTable
+      Events:
+        EnvironmentalAnalysisJobs:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt EnvironmentalAnalysisQueue.Arn
+            BatchSize: 1
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+            ScalingConfig:
+              MaximumConcurrency: 2
+    Metadata:
+      BuildMethod: makefile
+
   EventApiLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -410,6 +496,12 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-scoring-trigger'
+      RetentionInDays: 14
+
+  EnvironmentalAnalysisLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-environmental-analysis'
       RetentionInDays: 14
 
 Outputs:

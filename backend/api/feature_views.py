@@ -47,15 +47,24 @@ def map_layer(repository: Any, layer: str, limit: int, evidence_reader: Any | No
         raise ValueError("layer must be blind-spots, sensor-disagreement, or exposure")
     events, _ = repository.list(_empty_filters(), limit, None)
     context_reader = getattr(repository, "get_feature_context", None)
+    batch_context_reader = getattr(repository, "get_feature_contexts", None)
+    feature_contexts = batch_context_reader([event.event_id for event in events]) if batch_context_reader else None
     field = LAYER_FIELDS[layer]
     items = []
     for event in events:
-        context = context_reader(event.event_id) if context_reader else None
+        context = (
+            feature_contexts.get(event.event_id) if feature_contexts is not None
+            else context_reader(event.event_id) if context_reader else None
+        )
         value = (context or {}).get(field)
-        if evidence_reader and layer == "sensor-disagreement":
+        if evidence_reader and feature_contexts is None and layer == "sensor-disagreement":
             value = evidence_reader.get_latest_derived(event.event_id, "SENSOR_COMPARISON")
-        elif evidence_reader and layer == "exposure":
+        elif evidence_reader and feature_contexts is None and layer == "exposure":
             value = evidence_reader.get_latest_derived(event.event_id, "POPULATION_EXPOSURE_ESTIMATE")
+        if not value and layer == "sensor-disagreement":
+            value = (context or {}).get("sensor_comparison")
+        elif not value and layer == "exposure":
+            value = (context or {}).get("exposure")
         if not isinstance(value, dict):
             continue
         if layer == "blind-spots" and value.get("score") is None:

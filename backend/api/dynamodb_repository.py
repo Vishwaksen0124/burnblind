@@ -51,8 +51,68 @@ class DynamoCandidateEventRepository:
         item = self._table.get_item(Key={"event_id": event_id}, ConsistentRead=True).get("Item")
         if not item:
             return None
-        allowed = ("blind_spot", "sensor_comparison", "exposure", "replay_timeline")
-        return {key: item[key] for key in allowed if key in item}
+        allowed = ("blind_spot", "sensor_comparison", "exposure", "replay_timeline", "environmental_analysis")
+        result = {key: item[key] for key in allowed if key in item}
+        for key in result:
+            result[key] = _plain_number(result[key])
+        return result
+
+    def get_feature_contexts(self, event_ids: list[str]) -> dict[str, dict[str, Any]]:
+        """Batch-load feature summaries for a map layer without per-marker reads."""
+        if not event_ids:
+            return {}
+        from boto3.dynamodb.types import TypeDeserializer, TypeSerializer
+
+        table_name = self._table.name
+        client = self._table.meta.client
+        serializer = TypeSerializer()
+        deserializer = TypeDeserializer()
+        pending = {table_name: {
+            "Keys": [{"event_id": serializer.serialize(event_id)} for event_id in event_ids[:100]],
+            "ConsistentRead": True,
+        }}
+        items: list[dict[str, Any]] = []
+        for attempt in range(5):
+            if not pending:
+                break
+            response = client.batch_get_item(RequestItems=pending)
+            items.extend({key: deserializer.deserialize(value) for key, value in item.items()}
+                         for item in response.get("Responses", {}).get(table_name, []))
+            pending = response.get("UnprocessedKeys", {})
+            if pending and attempt < 4:
+                import time
+
+                time.sleep(0.05 * (2 ** attempt))
+        if pending:
+            raise RuntimeError("DynamoDB returned unprocessed event feature keys")
+        allowed = ("blind_spot", "sensor_comparison", "exposure", "replay_timeline", "environmental_analysis")
+        result = {}
+        for item in items:
+            context = {key: _plain_number(item[key]) for key in allowed if key in item}
+            if context:
+                result[str(item["event_id"])] = context
+        return result
+
+    def put_feature_context(self, event_id: str, features: dict[str, Any]) -> None:
+        """Persist deterministic feature summaries without changing score inputs."""
+        safe_features = {key: _dynamo_safe(value) for key, value in features.items()}
+        expressions = []
+        names = {}
+        values = {}
+        for index, (key, value) in enumerate(safe_features.items()):
+            name = f"#f{index}"
+            token = f":v{index}"
+            names[name] = key
+            values[token] = value
+            expressions.append(f"{name} = {token}")
+        if not expressions:
+            return
+        self._table.update_item(
+            Key={"event_id": event_id},
+            UpdateExpression="SET " + ", ".join(expressions),
+            ExpressionAttributeNames=names,
+            ExpressionAttributeValues=values,
+        )
 
     def list(
         self,
@@ -173,7 +233,25 @@ def _to_event(item: dict) -> CandidateEvent:
 def _plain_number(value):
     if isinstance(value, (int, float, bool)):
         return value
+    if isinstance(value, dict):
+        return {key: _plain_number(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_plain_number(item) for item in value]
     try:
         return float(value)
     except (TypeError, ValueError):
         return value
+
+
+def _dynamo_safe(value):
+    from decimal import Decimal
+
+    if isinstance(value, bool) or value is None or isinstance(value, (str, int)):
+        return value
+    if isinstance(value, float):
+        return Decimal(str(value))
+    if isinstance(value, dict):
+        return {key: _dynamo_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_dynamo_safe(item) for item in value]
+    return value

@@ -232,78 +232,28 @@ def build_evidence_tools(
         if event is None:
             return {"status": "NOT_FOUND", "event_id": event_id}
         records = evidence.list_for_event(event_id)
-        satellite_rows = [
-            row for row in records
-            if row.get("evidence_type") not in {
-                "WEATHER_ESTIMATE", "POPULATION_EXPOSURE_ESTIMATE", "SENSOR_COMPARISON", "SENSOR_COVERAGE"
-            }
-            and row.get("source")
-        ]
-        coverage_rows = [row for row in records if row.get("evidence_type") == "SENSOR_COVERAGE"]
-        sources = sorted(
-            {str(row["source"]) for row in satellite_rows}
-            | {
-                str(row.get("record", {}).get("source") or row.get("source"))
-                for row in coverage_rows
-                if row.get("record", {}).get("source") or row.get("source")
-            }
-        )
-        if len(sources) < 2:
-            return {
-                "status": "INDEPENDENT_OBSERVATION_UNAVAILABLE",
-                "sources": sources,
-                "evidence_ids": [],
-                "caveat": "No independent source observation is attached; absence is not a non-detection.",
-            }
-        from backend.common.models import FireObservation
-        from backend.processing.comparison import compare_sensor_observations
-
-        observations = []
-        for row in satellite_rows:
-            timestamp = _parse_time(row.get("observed_at_utc"))
-            if timestamp is None or not row.get("observation_id"):
-                continue
-            try:
-                observations.append(FireObservation(
-                    fire_id=str(row["observation_id"]),
-                    source=str(row["source"]),
-                    observed_at_utc=timestamp,
-                    latitude=float(row["latitude"]),
-                    longitude=float(row["longitude"]),
-                    grid_id=str(row.get("grid_id") or event.grid_id),
-                    confidence=None,
-                    source_version=str(row.get("source_version") or "attached-evidence"),
-                ))
-            except (KeyError, TypeError, ValueError):
-                continue
-        primary_source = next((name for name in sources if name == event.sources[0]), sources[0])
-        comparison_source = next(name for name in sources if name != primary_source)
-        coverage_records = [row.get("record", {}) for row in coverage_rows]
-        for row in coverage_rows:
-            record = row.get("record", {})
-            evidence_id = record.get("evidence_id") or row.get("observation_id")
-            source = record.get("source") or row.get("source")
-            if evidence_id and source:
-                registry[str(evidence_id)] = {"type": "SENSOR_COVERAGE", "source": str(source)}
-        result = compare_sensor_observations(observations, primary_source, comparison_source, coverage_records=coverage_records)
-        result["evidence_ids"] = sorted({
-            evidence_id
-            for match in result.get("matches", [])
-            for evidence_id in (match.get("primary_evidence_id"), match.get("comparison_evidence_id"))
-            if evidence_id
-        })
-        comparison_id = "cmp_" + hashlib.sha256(event.event_id.encode()).hexdigest()[:24]
-        evidence.put_derived_record({
-            "observation_id": comparison_id,
-            "event_id": event.event_id,
-            "event_time_utc": _iso(event.detected_at_utc),
-            "observed_at_utc": _iso(event.detected_at_utc),
-            "source": "BURNBLIND_CROSS_SENSOR_COMPARISON",
-            "evidence_type": "SENSOR_COMPARISON",
-            "latitude": event.latitude,
-            "longitude": event.longitude,
-            "record": result,
-        })
+        from backend.processing.evidence_comparison import compare_attached_evidence
+        result = compare_attached_evidence(event, records)
+        for row in records:
+            if row.get("evidence_type") == "SENSOR_COVERAGE":
+                record = row.get("record", {})
+                evidence_id = record.get("evidence_id") or row.get("observation_id")
+                source = record.get("source") or row.get("source")
+                if evidence_id and source:
+                    registry[str(evidence_id)] = {"type": "SENSOR_COVERAGE", "source": str(source)}
+        if result.get("status") != "INDEPENDENT_OBSERVATION_UNAVAILABLE":
+            comparison_id = "cmp_" + hashlib.sha256(event.event_id.encode()).hexdigest()[:24]
+            evidence.put_derived_record({
+                "observation_id": comparison_id,
+                "event_id": event.event_id,
+                "event_time_utc": _iso(event.detected_at_utc),
+                "observed_at_utc": _iso(event.detected_at_utc),
+                "source": "BURNBLIND_CROSS_SENSOR_COMPARISON",
+                "evidence_type": "SENSOR_COMPARISON",
+                "latitude": event.latitude,
+                "longitude": event.longitude,
+                "record": result,
+            })
         return result
 
     environment_packet: dict[str, dict[str, Any]] = {}

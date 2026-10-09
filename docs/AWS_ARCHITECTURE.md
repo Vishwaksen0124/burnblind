@@ -43,6 +43,7 @@ GET  /events
 GET  /events/{id}
 GET  /events/{id}/investigation
 POST /events/{id}/investigate
+POST /events/{id}/environmental-analysis
 ```
 
 ### Lambda
@@ -193,6 +194,11 @@ Strands agent
 DeepSeek V3.2 on Bedrock Mantle
     ↕
 Event-scoped tools: event, satellite, history, weather, exposure, sensors
+
+Source-based environmental enrichment is a separate reviewer-triggered SQS
+workflow. Its Lambda queries ERA5 and WorldPop and evaluates already attached
+sensor evidence; it has no Strands/model permissions and never invokes the
+investigation queue. See `docs/ENVIRONMENTAL_ANALYSIS.md`.
     ↓
 Structured, evidence-cited investigation
     ↓
