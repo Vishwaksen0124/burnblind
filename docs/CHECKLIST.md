@@ -22,10 +22,10 @@
 - [x] Weather source selected
 - [x] Population source selected
 
-- [ ] Sources selected
+- [x] Sources selected
 - [ ] Licensing/provenance checked
-- [ ] Schemas defined
-- [ ] Sample data validated
+- [x] Schemas defined
+- [x] Sample data validated
 - [ ] S3 structure defined
 
 ## Intelligence
@@ -112,7 +112,7 @@
 - [x] FIRMS parser and key-safe archive downloader implemented
 - [x] Open-Meteo ERA5 wind adapter and directional screening corridor
 - [ ] FIRMS MAP_KEY configured and historical reference files acquired
-- [x] Deterministic scoring component and explicit versioned trigger config (input feature derivation still pending)
+- [x] Deterministic scoring component and explicit versioned trigger config; feature derivation is implemented but replay seed rows lack complete score inputs
 - [x] Replay event generation and stable IDs
 - [x] Read-only API with validated filters, pagination, and gated investigation route
 - [x] Responsive map-first replay dashboard with explicit historical labeling

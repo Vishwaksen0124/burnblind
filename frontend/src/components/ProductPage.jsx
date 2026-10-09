@@ -80,13 +80,13 @@ export default function ProductPage() {
     </section>
 
     <section className="sources-section" id="methodology">
-      <div className="section-heading" id="landing-methodology"><div><div className="section-index">05 / DATA & LIMITATIONS</div><h2>Know what the data<br /><em>can—and cannot—say.</em></h2></div><p>Source transparency is part of the interface. Current replay capability is distinct from planned integrations.</p></div>
+      <div className="section-heading" id="landing-methodology"><div><div className="section-index">05 / DATA & LIMITATIONS</div><h2>Know what the data<br /><em>can—and cannot—say.</em></h2></div><p>Source transparency is part of the interface. Event-level availability reflects stored evidence and active integrations.</p></div>
       <div className="landing-source-grid">{SOURCES.map((source) => <article className="landing-source" key={source.name}><span>{source.type}</span><h3><a href={source.url} target="_blank" rel="noreferrer">{source.name} ↗</a></h3><p>{source.provides}</p><small>{source.limit}</small></article>)}</div>
-      <div className="limitations-row"><strong>Current replay boundaries</strong><span>Historical sample · Oct–Nov 2025</span><span>Scores and population exposure unavailable</span><span>No independent fire confirmation</span></div>
+      <div className="limitations-row"><strong>Current replay boundaries</strong><span>Historical sample · Oct–Nov 2025</span><span>No seeded score inputs · exposure is per event</span><span>No independent fire confirmation</span></div>
     </section>
 
     <section className="agent-section">
-      <div className="agent-index">06 / INVESTIGATION AGENT</div><div><h2>Evidence organized<br />for human review.</h2><p>When model access is available, the investigation agent assembles supporting evidence, contradictions, missing information, and a recommendation. Its output is advisory; it does not make operational decisions.</p><p className="agent-status"><i /> Automated reviews are currently limited by model authorization.</p></div><a className="secondary-button" href="#investigations">Investigation details <span aria-hidden="true">→</span></a>
+      <div className="agent-index">06 / INVESTIGATION AGENT</div><div><h2>Evidence organized<br />for human review.</h2><p>Strands assembles source-backed findings, contradictions, missing evidence, and a human-review recommendation from one event-scoped packet. Bedrock Mantle is the configured provider; the report is advisory and does not make operational decisions.</p><p className="agent-status"><i /> Model invocation depends on the deployed AWS account authorization.</p></div><a className="secondary-button" href="#investigations">Investigation details <span aria-hidden="true">→</span></a>
     </section>
 
     <section className="final-cta"><div className="section-index">07 / EXPLORE THE REPLAY</div><h2>Start with what<br />the satellites <em>observed.</em></h2><p>Explore grouped thermal observations across Punjab and Haryana, with source context and uncertainty kept in view.</p><a className="primary-button" href="#monitoring">Open monitoring <span aria-hidden="true">→</span></a></section>

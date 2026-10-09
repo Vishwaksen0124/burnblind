@@ -71,8 +71,8 @@ validation, source serialization, and missing optional measurements.
 - [ ] Normalize acquired FIRMS records
 - [ ] Validate timestamps and coordinates
 - [ ] Map observations to the same grid
-- [ ] Build spatial/temporal matching logic
-- [ ] Use it as an independent reference for cross-sensor analysis
+- [x] Implement spatial/temporal matching and strict sensor comparison logic
+- [ ] Acquire independent FIRMS reference records and validate comparison against them
 
 ### Current observation source
 
@@ -112,9 +112,9 @@ Start with the released GK2A fire dataset + FIRMS historical data. Add raw/curre
 - [x] observation gap with UTC and future-observation leakage validation
 - [ ] thermal anomaly
 - [x] historical source-detection context with an event-time cutoff
-- [ ] sensor disagreement
-- [ ] timing risk
-- [ ] data quality
+- [x] sensor disagreement (only with explicit matched observations and coverage evidence)
+- [x] timing-risk and observation-quality input normalization
+- [ ] Attach source-backed coverage/quality records to the replay event pipeline
 - [x] Cross-source detection matching primitive (same metric grid/time window)
 
 Every feature:
@@ -138,11 +138,10 @@ Every feature:
 
 - [x] Historical ERA5 wind ingestion with explicit missing-value handling
 - [x] Downwind bearing and geodesic directional screening corridor
-- [ ] Population raster intersection and exposure estimate
-- [ ] population intersection
-- [ ] exposure estimate
-- [ ] confidence
-- [ ] limitations
+- [x] Asynchronous WorldPop v2 polygon population-sum client
+- [x] Event-scoped directional screening corridor and stored estimate provenance
+- [x] Explicit assumptions and limitations
+- [ ] Live WorldPop service verification and confidence calibration
 
 ## Phase 8 — Event engine
 
@@ -225,23 +224,20 @@ can still request an override from the event detail view.
 - [x] configure Strands
 - [x] agent instructions
 - [x] output schema
-- [x] `get_event`
-- [x] `get_satellite_evidence`
-- [x] `get_historical_context`
-- [x] `get_weather`
-- [x] `get_exposure`
-- [x] `get_sensor_comparison`
-- [x] tool validation and requested-event scoping
+- [x] Application-side event and source evidence readers
+- [x] Assemble satellite, weather, exposure, history, and comparison results before model invocation
+- [x] Requested-event scoping and evidence validation
+- [x] Model receives a bounded JSON input packet and has no callable retrieval tools
+- [ ] Historical context and explicit observation-coverage evidence attached to the deployed replay
 - [x] evidence grounding
 - [x] DynamoDB stream evaluates the existing versioned investigation trigger
 - [x] analyst override request available in the event detail view
 - [x] empty feature records do not qualify from missingness alone
 - [x] failed run leaves candidate event available for human review
 
-The event detail UI presents qualification reasons, report status, and findings.
-The seed pipeline does not yet derive `score_features`; the stream trigger
-activates when a deterministic feature producer writes those normalized values.
-Tool outputs remain source-backed; unavailable evidence is described explicitly.
+The event detail UI presents qualification reasons, report status, evidence, sensor comparison, exposure availability, and human-review outcomes.
+The feature derivation and score-trigger code are implemented and unit-tested, but the seed pipeline still does not attach complete `score_features`; replay seed rows therefore remain unscored.
+Source assembly happens before model invocation. The model receives only the event-scoped JSON packet, and unavailable evidence is represented explicitly. Live model authorization has not been revalidated from a least-privilege AWS identity.
 
 ## Phase 15 — Agent evaluation
 
@@ -267,11 +263,11 @@ Tool outputs remain source-backed; unavailable evidence is described explicitly.
 ## Phase 17 — Frontend
 
 - [x] thermal design system
-- [ ] product page
+- [x] product page
 - [x] how-it-works
 - [x] map-first dashboard
 - [x] event evidence detail
-- [x] investigation status page (agent findings remain unavailable)
+- [x] investigation list and structured report UI
 - [x] data and methodology page
 - [x] responsive layout
 - [x] loading/error states
@@ -286,7 +282,7 @@ Tool outputs remain source-backed; unavailable evidence is described explicitly.
 - [x] Amplify deployment publisher script
 - [x] private S3
 - [x] DynamoDB
-- [ ] SQS/DLQ
+- [x] FIFO SQS/DLQ
 - [x] API Lambda
 - [ ] EventBridge
 - [x] API Gateway HTTP API
@@ -300,6 +296,7 @@ Tool outputs remain source-backed; unavailable evidence is described explicitly.
 - [x] deployed health, summary, event list, CORS, and investigation gate verified
 - [x] CORS allows only the Amplify and local Vite origins
 - [x] public Amplify dashboard deployed and returned HTTP 200
+- [ ] Deploy the latest SAM backend changes through an approved deployment role
 
 ## Phase 19 — End-to-end
 

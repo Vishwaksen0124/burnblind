@@ -178,7 +178,9 @@ cd frontend && npm install && npm run dev
 
 Open `http://127.0.0.1:5173`. The dashboard is labeled
 `HISTORICAL REPLAY · 2025`; it is not a live feed. Candidate clusters are not
-confirmed fires, and scores remain unavailable.
+confirmed fires. The seeded sample has no score feature packets, so scoring and
+automatic qualification remain unavailable for those rows. Event-scoped wind and
+population estimates are assembled only when a review is requested and sources respond.
 
 To run the local dashboard against the deployed AWS API, use:
 
