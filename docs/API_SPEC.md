@@ -137,6 +137,10 @@ authorizer and the `aws.cognito.signin.user.admin` scope:
 - `POST /events/{event_id}/investigate`
 - `POST /events/{event_id}/review`
 
+The deployed HTTP API registers both the `/api/...` browser paths and the
+unprefixed route forms above so the public proxy route cannot bypass JWT
+validation.
+
 Anonymous requests receive `401`; reviewer accounts are administrator-created
 and public self-registration is disabled. The API Lambda also requires the
 validated JWT subject before processing either write. Store that subject with

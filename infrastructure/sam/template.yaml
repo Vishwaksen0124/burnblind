@@ -282,6 +282,24 @@ Resources:
             Auth:
               Authorizer: ReviewerJwt
               AuthorizationScopes: [aws.cognito.signin.user.admin]
+        ReviewerApiInvestigationRequest:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BurnBlindApi
+            Path: /api/events/{event_id}/investigate
+            Method: POST
+            Auth:
+              Authorizer: ReviewerJwt
+              AuthorizationScopes: [aws.cognito.signin.user.admin]
+        ReviewerApiOutcomeSubmission:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BurnBlindApi
+            Path: /api/events/{event_id}/review
+            Method: POST
+            Auth:
+              Authorizer: ReviewerJwt
+              AuthorizationScopes: [aws.cognito.signin.user.admin]
     Metadata:
       BuildMethod: makefile
 
