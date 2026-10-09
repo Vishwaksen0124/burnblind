@@ -9,6 +9,7 @@ on:
       - 'infrastructure/sam/**'
       - 'Makefile'
       - 'pyproject.toml'
+      - 'scripts/smoke_deployed_api.py'
       - 'tests/**'
       - '.github/workflows/backend-deploy.yml'
   push:
@@ -19,6 +20,7 @@ on:
       - 'infrastructure/sam/**'
       - 'Makefile'
       - 'pyproject.toml'
+      - 'scripts/smoke_deployed_api.py'
       - 'tests/**'
       - '.github/workflows/backend-deploy.yml'
   workflow_dispatch:

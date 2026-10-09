@@ -64,6 +64,12 @@ sample
  → DynamoDB
 ```
 
+The backend deployment workflow also runs `scripts/smoke_deployed_api.py`
+after deploy. It checks health, event/action-center/map-layer/investigation
+read contracts and dashboard CORS, then verifies that anonymous investigation
+and reviewer-write requests return 401. The mutation probes use a reserved,
+nonexistent event ID and cannot alter a real event.
+
 ## 6. Failure tests
 
 Simulate:
