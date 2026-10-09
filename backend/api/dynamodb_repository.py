@@ -46,6 +46,14 @@ class DynamoCandidateEventRepository:
             if key in item
         }
 
+    def get_feature_context(self, event_id: str) -> dict[str, Any] | None:
+        """Return allowlisted, source-backed feature records attached to an event."""
+        item = self._table.get_item(Key={"event_id": event_id}, ConsistentRead=True).get("Item")
+        if not item:
+            return None
+        allowed = ("blind_spot", "sensor_comparison", "exposure", "replay_timeline")
+        return {key: item[key] for key in allowed if key in item}
+
     def list(
         self,
         filters: EventFilters,

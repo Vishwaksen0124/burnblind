@@ -26,6 +26,7 @@ def investigate_event(
     region: str | None = None,
     agent_factory: Any | None = None,
     weather_lookup: Any | None = None,
+    population_lookup: Any | None = None,
 ) -> dict[str, Any]:
     event = events.get(event_id)
     if event is None:
@@ -97,7 +98,7 @@ def investigate_event(
 
     evidence_registry: dict[str, dict[str, str]] = {}
     tools = build_evidence_tools(
-        events, evidence, evidence_registry, weather_lookup, target_event_id=event_id
+        events, evidence, evidence_registry, weather_lookup, population_lookup, target_event_id=event_id
     )
     # Evidence sources required for every review are read once by the service,
     # then passed as a bounded, event-scoped input packet. The model has no

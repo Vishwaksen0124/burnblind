@@ -118,3 +118,63 @@ def test_unknown_events_and_malformed_ids_return_structured_errors():
     assert missing.body["error"]["code"] == "EVENT_NOT_FOUND"
     assert malformed.status_code == 400
     assert malformed.body["error"]["code"] == "INVALID_EVENT_ID"
+
+
+def test_review_outcomes_are_validated_and_persisted():
+    class ReviewStore:
+        items = []
+
+        def record(self, event_id, outcome, notes, request_id):
+            saved = {"event_id": event_id, "outcome": outcome, "notes": notes, "request_id": request_id}
+            self.items.append(saved)
+            return saved
+
+        def list_for_event(self, event_id):
+            return [item for item in self.items if item["event_id"] == event_id]
+
+    store = ReviewStore()
+    event_id = "evt_000000000000000000000001"
+    saved = handle_request(
+        "POST", f"/events/{event_id}/review", {}, repository(), "review-request",
+        body=json.dumps({"outcome": "NEEDS_VERIFICATION", "notes": "Compare a later pass."}),
+        review_store=store,
+    )
+    listed = handle_request("GET", f"/events/{event_id}/review", {}, repository(), review_store=store)
+    invalid = handle_request(
+        "POST", f"/events/{event_id}/review", {}, repository(),
+        body=json.dumps({"outcome": "EVACUATE"}), review_store=store,
+    )
+
+    assert saved.status_code == 201
+    assert listed.body["items"][0]["outcome"] == "NEEDS_VERIFICATION"
+    assert invalid.status_code == 400
+
+
+def test_replay_endpoint_respects_requested_historical_time():
+    response = handle_request("GET", "/replay", {"at": "2025-10-02T12:00:00Z", "limit": "10"}, repository())
+
+    assert response.status_code == 200
+    assert response.body["data_mode"] == "HISTORICAL_REPLAY"
+    assert all(item["detected_at_utc"] <= response.body["at_utc"] for item in response.body["items"])
+
+
+def test_action_center_and_map_layers_report_missing_inputs_without_inventing_data():
+    action = handle_request("GET", "/action-center", {"limit": "3"}, repository())
+    blindness = handle_request("GET", "/map-layers", {"layer": "blind-spots"}, repository())
+    comparison = handle_request("GET", "/map-layers", {"layer": "sensor-disagreement"}, repository())
+
+    assert action.status_code == 200
+    assert action.body["counts"]["MORE_EVIDENCE_NEEDED"] == 3
+    assert blindness.body["status"] == "UNAVAILABLE"
+    assert blindness.body["items"] == []
+    assert "coverage" in blindness.body["reason"]
+    assert comparison.body["status"] == "UNAVAILABLE"
+
+
+def test_event_feature_routes_explicitly_report_unavailable_data():
+    event_id = "evt_000000000000000000000001"
+    response = handle_request("GET", f"/events/{event_id}/exposure", {}, repository())
+
+    assert response.status_code == 200
+    assert response.body["status"] == "UNAVAILABLE"
+    assert response.body["result"] is None

@@ -11,6 +11,8 @@ from typing import Any, Mapping
 import uuid
 
 from backend.api.repository import CandidateEventRepository, EventFilters, InvalidCursor
+from backend.api.review_store import REVIEW_OUTCOMES
+from backend.api.feature_views import action_center, map_layer
 from backend.common.serialization import candidate_event_to_dict
 
 
@@ -159,6 +161,8 @@ def handle_request(
     origin: str | None = None,
     investigation_store: Any | None = None,
     investigation_launcher: Any | None = None,
+    review_store: Any | None = None,
+    evidence_reader: Any | None = None,
 ) -> ApiResponse:
     query = query or {}
     correlation_id = request_id or str(uuid.uuid4())
@@ -202,6 +206,24 @@ def handle_request(
             "data_mode": "HISTORICAL_REPLAY",
             "last_updated": newest.isoformat().replace("+00:00", "Z") if newest else None,
         }
+    elif method == "GET" and route == "/action-center":
+        try:
+            limit = int(query.get("limit", "50"))
+            if not 1 <= limit <= 100:
+                raise ValueError
+            response = action_center(repository, limit, query.get("cursor"))
+            status = 200
+        except (TypeError, ValueError, InvalidCursor):
+            status, response = _error(400, "INVALID_QUERY", "limit must be from 1 to 100 and cursor must be valid.")
+    elif method == "GET" and route == "/map-layers":
+        try:
+            limit = int(query.get("limit", "100"))
+            if not 1 <= limit <= 100:
+                raise ValueError
+            response = map_layer(repository, query.get("layer", ""), limit, evidence_reader)
+            status = 200
+        except ValueError as exc:
+            status, response = _error(400, "INVALID_QUERY", str(exc) or "limit must be from 1 to 100.")
     elif method == "GET" and route == "/events":
         try:
             filters, limit, cursor = _parse_filters(query)
@@ -215,6 +237,23 @@ def handle_request(
             status, response = _error(400, "INVALID_CURSOR", str(exc))
         except ValueError as exc:
             status, response = _error(400, "INVALID_QUERY", str(exc))
+    elif method == "GET" and route == "/replay":
+        try:
+            replay_at = _parse_timestamp(query.get("at", ""), "at")
+            limit = int(query.get("limit", "50"))
+            if not 1 <= limit <= 100:
+                raise ValueError
+            filters = EventFilters(end=replay_at)
+            events, next_cursor = repository.list(filters, limit, query.get("cursor"))
+            status, response = 200, {
+                "at_utc": replay_at.isoformat().replace("+00:00", "Z"),
+                "data_mode": "HISTORICAL_REPLAY",
+                "items": [_event_payload(event) for event in events],
+                "next_cursor": next_cursor,
+            }
+        except (TypeError, ValueError, InvalidCursor) as exc:
+            message = str(exc) if isinstance(exc, InvalidCursor) else "at must be ISO-8601 and limit must be from 1 to 100."
+            status, response = _error(400, "INVALID_QUERY", message)
     elif method == "GET" and route == "/investigations":
         if investigation_store is None:
             status, response = _error(503, "INVESTIGATION_STORE_UNAVAILABLE", "Investigation records are not configured.")
@@ -270,6 +309,43 @@ def handle_request(
                         }
                     except Exception:
                         status, response = _error(503, "INVESTIGATION_QUEUE_UNAVAILABLE", "The investigation request could not be queued. Try again later.")
+            elif len(parts) == 4 and parts[3] == "review" and method == "GET":
+                if review_store is None:
+                    status, response = _error(503, "REVIEW_STORE_UNAVAILABLE", "Human review storage is not configured.")
+                else:
+                    status, response = 200, {"event_id": event.event_id, "items": review_store.list_for_event(event.event_id)}
+            elif len(parts) == 4 and parts[3] == "review" and method == "POST":
+                if review_store is None:
+                    status, response = _error(503, "REVIEW_STORE_UNAVAILABLE", "Human review storage is not configured.")
+                else:
+                    try:
+                        payload = json.loads(body or "")
+                    except json.JSONDecodeError:
+                        payload = None
+                    if not isinstance(payload, dict) or set(payload) - {"outcome", "notes"}:
+                        status, response = _error(400, "INVALID_REVIEW", "Provide an outcome and optional notes.")
+                    elif payload.get("outcome") not in REVIEW_OUTCOMES:
+                        status, response = _error(400, "INVALID_REVIEW", "outcome is not a supported human review outcome.")
+                    elif not isinstance(payload.get("notes", ""), str) or len(payload.get("notes", "")) > 1000:
+                        status, response = _error(400, "INVALID_REVIEW", "notes must be text of at most 1000 characters.")
+                    else:
+                        saved = review_store.record(event.event_id, payload["outcome"], payload.get("notes", "").strip(), correlation_id)
+                        status, response = 201, {"event_id": event.event_id, "review": saved}
+            elif len(parts) == 4 and parts[3] in {"sensor-comparison", "exposure"} and method == "GET":
+                context_reader = getattr(repository, "get_feature_context", None)
+                context = context_reader(event.event_id) if context_reader else None
+                key = "SENSOR_COMPARISON" if parts[3] == "sensor-comparison" else "POPULATION_EXPOSURE_ESTIMATE"
+                value = evidence_reader.get_latest_derived(event.event_id, key) if evidence_reader else None
+                if value is None:
+                    context_key = "sensor_comparison" if parts[3] == "sensor-comparison" else "exposure"
+                    value = (context or {}).get(context_key)
+                available = bool(value) and value.get("status") not in {"UNAVAILABLE", "INDEPENDENT_OBSERVATION_UNAVAILABLE"}
+                status, response = 200, {
+                    "event_id": event.event_id,
+                    "status": "AVAILABLE" if available else "UNAVAILABLE",
+                    "result": value,
+                    "reason": None if available else (value or {}).get("detail") or f"No sourced {key.replace('_', ' ')} record is attached to this event.",
+                }
             else:
                 status, response = _error(405, "METHOD_NOT_ALLOWED", "Method is not allowed for this resource.")
     else:
@@ -300,9 +376,11 @@ def lambda_handler(event: Mapping[str, Any], context: Any) -> dict[str, Any]:
     headers = event.get("headers") or {}
     origin = headers.get("origin") or headers.get("Origin")
     investigation_store, investigation_launcher = _investigation_services_from_environment()
+    review_store = _review_store_from_environment()
+    evidence_reader = _evidence_reader_from_environment()
     response = handle_request(
         method, path, query, repository, request_id, event.get("body"), origin,
-        investigation_store, investigation_launcher,
+        investigation_store, investigation_launcher, review_store, evidence_reader,
     )
     return response.gateway_response()
 
@@ -328,3 +406,25 @@ def _investigation_services_from_environment():
     store = DynamoInvestigationStore(boto3.resource("dynamodb").Table(table_name))
     launcher = SqsInvestigationLauncher(store, queue_url, boto3.client("sqs"))
     return store, launcher
+
+
+def _review_store_from_environment():
+    table_name = os.environ.get("REVIEW_OUTCOME_TABLE")
+    if not table_name:
+        return None
+    import boto3
+
+    from backend.api.review_store import DynamoReviewOutcomeStore
+
+    return DynamoReviewOutcomeStore(boto3.resource("dynamodb").Table(table_name))
+
+
+def _evidence_reader_from_environment():
+    table_name = os.environ.get("EVIDENCE_TABLE")
+    if not table_name:
+        return None
+    import boto3
+
+    from backend.agent.evidence import DynamoEvidenceRepository
+
+    return DynamoEvidenceRepository(table_name, boto3.resource("dynamodb").Table(table_name))

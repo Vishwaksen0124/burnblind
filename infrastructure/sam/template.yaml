@@ -11,6 +11,7 @@ Globals:
         EVENT_TABLE: !Ref EventsTable
         EVIDENCE_TABLE: !Ref EvidenceTable
         INVESTIGATION_TABLE: !Ref InvestigationsTable
+        REVIEW_OUTCOME_TABLE: !Ref ReviewOutcomesTable
         INVESTIGATION_QUEUE_URL: !Ref InvestigationQueue
         CORS_ALLOW_ORIGINS: !Join [",", [!Ref DashboardOrigin, !Ref LocalDashboardOrigin]]
 
@@ -129,6 +130,25 @@ Resources:
         - AttributeName: event_id
           KeyType: HASH
 
+  ReviewOutcomesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+      AttributeDefinitions:
+        - AttributeName: event_id
+          AttributeType: S
+        - AttributeName: reviewed_at_utc
+          AttributeType: S
+      KeySchema:
+        - AttributeName: event_id
+          KeyType: HASH
+        - AttributeName: reviewed_at_utc
+          KeyType: RANGE
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
   InvestigationDeadLetterQueue:
     Type: AWS::SQS::Queue
     Properties:
@@ -176,8 +196,12 @@ Resources:
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref EventsTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref EvidenceTable
         - DynamoDBCrudPolicy:
             TableName: !Ref InvestigationsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ReviewOutcomesTable
         - SQSSendMessagePolicy:
             QueueName: !GetAtt InvestigationQueue.QueueName
       Events:
@@ -212,7 +236,7 @@ Resources:
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref EventsTable
-        - DynamoDBReadPolicy:
+        - DynamoDBCrudPolicy:
             TableName: !Ref EvidenceTable
         - DynamoDBCrudPolicy:
             TableName: !Ref InvestigationsTable
@@ -322,6 +346,8 @@ Outputs:
     Value: !Ref EvidenceTable
   InvestigationsTableName:
     Value: !Ref InvestigationsTable
+  ReviewOutcomesTableName:
+    Value: !Ref ReviewOutcomesTable
   InvestigationQueueUrl:
     Value: !Ref InvestigationQueue
   ReplayArtifactBucketName:
