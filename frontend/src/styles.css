@@ -454,3 +454,10 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 .candidate-reference>span{display:block;margin-top:5px;color:#91938a}
 @media(max-width:900px){.candidate-facts{grid-template-columns:1fr 1fr;row-gap:18px}.candidate-assessment{grid-column:1/-1;padding-left:0;border-right:0}.candidate-assessment small{max-width:none}}
 @media(max-width:600px){.candidate-heading{min-height:0;padding:18px 15px}.candidate-heading h2{font-size:19px}.candidate-heading-actions{gap:8px;align-items:flex-start}.candidate-state{max-width:150px;padding:6px 8px;font-size:11px;line-height:1.3}.candidate-location{font-size:15px}.detail-tabs{padding:7px 9px;gap:2px}.detail-tabs [role=tab]{padding:0 10px;font-size:12px}.detail-tab-panel#event-panel{padding:0 14px 17px}.candidate-facts{grid-template-columns:1fr;gap:0;padding:15px 0}.candidate-fact,.candidate-fact:first-child,.candidate-fact:last-child,.candidate-assessment{padding:12px 0;border-right:0;border-bottom:1px solid #30332c}.candidate-fact:last-child{border-bottom:0}.evidence-context-heading{align-items:flex-start;flex-direction:column;margin-top:17px}.event-feature-grid{grid-template-columns:1fr}.event-feature-card{padding:14px}.candidate-integrity-note{align-items:flex-start;flex-direction:column;gap:4px}}
+
+.environmental-analysis-action{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:14px 0;padding:14px 16px;border:1px solid #39392f;background:linear-gradient(105deg,#22231d,#1b1d19 72%)}
+.environmental-analysis-action>div{min-width:0;display:grid;gap:4px}
+.environmental-analysis-action .detail-label{color:#d2a767}
+.environmental-analysis-action p{margin:0;color:#a9aa9f;font-size:13px;line-height:1.5}
+.environmental-analysis-action .action-button{min-height:40px}
+@media(max-width:600px){.environmental-analysis-action{align-items:stretch;flex-direction:column;padding:13px}.environmental-analysis-action .action-button{width:100%}}

@@ -1,5 +1,5 @@
-import { CircleMarker, MapContainer, TileLayer, Tooltip, ZoomControl, useMap, useMapEvents } from 'react-leaflet';
-import { useMemo, useState } from 'react';
+import { CircleMarker, GeoJSON, MapContainer, TileLayer, Tooltip, ZoomControl, useMap, useMapEvents } from 'react-leaflet';
+import { Fragment, useMemo, useState } from 'react';
 import { eventLabel, formatTimestamp } from '../lib/eventView.js';
 
 const REGION_BOUNDS = [[28.75, 73.75], [32.75, 77.85]];
@@ -62,9 +62,12 @@ export default function CandidateMap({ events = [], className = 'map', interacti
       const raw = item.value?.score ?? item.value?.population_estimate;
       const label = item.value?.status === 'DISAGREEMENT' ? 'Sensor disagreement' : item.value?.score != null ? `Monitoring blindness score ${Number(item.value.score).toFixed(2)}` : item.value?.population_estimate != null ? `Estimated potential exposure ${Number(item.value.population_estimate).toLocaleString()}` : item.value?.status || 'Sourced feature';
       const sourceEvent = events.find((event) => event.event_id === item.event_id);
-      return <CircleMarker key={`${activeLayer}-${item.event_id}`} center={[item.latitude, item.longitude]} radius={raw == null ? 8 : 7 + Math.min(6, Math.sqrt(Number(raw)))} pathOptions={{ color, weight: 2, fillColor: color, fillOpacity: 0.35 }} eventHandlers={interactive && onEventSelect && sourceEvent ? { click: () => onEventSelect(sourceEvent) } : undefined}>
-        <Tooltip><strong>{label}</strong><br />{formatTimestamp(item.detected_at_utc)}</Tooltip>
-      </CircleMarker>;
+      return <Fragment key={`${activeLayer}-${item.event_id}`}>
+        {activeLayer === 'exposure' && item.value?.corridor_geojson && <GeoJSON data={item.value.corridor_geojson} style={{ color, weight: 1.5, fillColor: color, fillOpacity: 0.16 }} />}
+        <CircleMarker center={[item.latitude, item.longitude]} radius={raw == null ? 8 : 7 + Math.min(6, Math.sqrt(Number(raw)))} pathOptions={{ color, weight: 2, fillColor: color, fillOpacity: 0.35 }} eventHandlers={interactive && onEventSelect && sourceEvent ? { click: () => onEventSelect(sourceEvent) } : undefined}>
+          <Tooltip><strong>{label}</strong><br />{formatTimestamp(item.detected_at_utc)}</Tooltip>
+        </CircleMarker>
+      </Fragment>;
     })}
   </MapContainer>;
 }

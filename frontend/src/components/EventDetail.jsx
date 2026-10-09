@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowRight, Clock3, FileCode2, MapPin, Satellite, UsersRound, X } from 'lucide-react';
-import { getExposure, getInvestigation, getReviewOutcomes, getSensorComparison, requestInvestigation, submitReviewOutcome } from '../api.js';
+import { getEnvironmentalAnalysis, getExposure, getInvestigation, getReviewOutcomes, getSensorComparison, requestEnvironmentalAnalysis, requestInvestigation, submitReviewOutcome } from '../api.js';
 import { formatCoordinate, formatTimestamp } from '../lib/eventView.js';
 import { useReviewerAuth } from '../reviewerAuth.jsx';
 
@@ -22,6 +22,9 @@ export default function EventDetail({ event, onClose, initialTab = 'event' }) {
   const [reviewError, setReviewError] = useState('');
   const [sensorComparison, setSensorComparison] = useState(null);
   const [exposure, setExposure] = useState(null);
+  const [environmental, setEnvironmental] = useState(null);
+  const [environmentalBusy, setEnvironmentalBusy] = useState(false);
+  const [environmentalError, setEnvironmentalError] = useState('');
 
   const refresh = useCallback(async (signal) => {
     const value = await getInvestigation(event.event_id, signal);
@@ -31,12 +34,12 @@ export default function EventDetail({ event, onClose, initialTab = 'event' }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    let timer;
+    let investigationTimer;
     const poll = async () => {
       try {
         const value = await refresh(controller.signal);
         setError('');
-        if (ACTIVE_STATUSES.has(value.status)) timer = window.setTimeout(poll, 2500);
+        if (ACTIVE_STATUSES.has(value.status)) investigationTimer = window.setTimeout(poll, 2500);
       } catch (err) {
         if (err.name !== 'AbortError') setError(err.message);
       } finally {
@@ -50,6 +53,8 @@ export default function EventDetail({ event, onClose, initialTab = 'event' }) {
     setReviewError('');
     setSensorComparison(null);
     setExposure(null);
+    setEnvironmental(null);
+    setEnvironmentalError('');
     setActiveTab(initialTab);
     poll();
     getReviewOutcomes(event.event_id, controller.signal)
@@ -62,8 +67,53 @@ export default function EventDetail({ event, onClose, initialTab = 'event' }) {
     getExposure(event.event_id, controller.signal)
       .then(setExposure)
       .catch((err) => { if (err.name !== 'AbortError') setExposure({ status: 'ERROR', reason: err.message }); });
-    return () => { controller.abort(); window.clearTimeout(timer); };
+    getEnvironmentalAnalysis(event.event_id, controller.signal)
+      .then(setEnvironmental)
+      .catch((err) => { if (err.name !== 'AbortError') setEnvironmentalError(err.message); });
+    return () => { controller.abort(); window.clearTimeout(investigationTimer); };
   }, [refresh, initialTab]);
+
+  useEffect(() => {
+    if (environmental?.status !== 'PROCESSING') return undefined;
+    const controller = new AbortController();
+    let timer;
+    const poll = async () => {
+      try {
+        const current = await getEnvironmentalAnalysis(event.event_id, controller.signal);
+        setEnvironmental(current);
+        if (current.status === 'PROCESSING') timer = window.setTimeout(poll, 2500);
+        else if (current.status === 'COMPLETE' || current.status === 'PARTIAL') {
+          const [comparison, population] = await Promise.all([
+            getSensorComparison(event.event_id, controller.signal),
+            getExposure(event.event_id, controller.signal),
+          ]);
+          setSensorComparison(comparison);
+          setExposure(population);
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') setEnvironmentalError(err.message);
+      }
+    };
+    timer = window.setTimeout(poll, 1500);
+    return () => { controller.abort(); window.clearTimeout(timer); };
+  }, [event.event_id, environmental?.status]);
+
+  async function startEnvironmentalAnalysis() {
+    if (!reviewerAuth.session) {
+      reviewerAuth.openSignIn('Sign in with an invited reviewer account to request sourced environmental analysis.');
+      return;
+    }
+    setEnvironmentalBusy(true);
+    setEnvironmentalError('');
+    try {
+      const value = await requestEnvironmentalAnalysis(event.event_id, reviewerAuth.session.token);
+      setEnvironmental(value);
+    } catch (err) {
+      setEnvironmentalError(err.message);
+    } finally {
+      setEnvironmentalBusy(false);
+    }
+  }
 
   async function startInvestigation() {
     if (!reviewerAuth.session) {
@@ -136,9 +186,16 @@ export default function EventDetail({ event, onClose, initialTab = 'event' }) {
         <div className={`candidate-fact candidate-assessment${hasScores ? '' : ' is-unavailable'}`}><span className="fact-icon"><FileCode2 aria-hidden="true" /></span><div><span className="detail-label">DETERMINISTIC ASSESSMENT</span><strong>{hasScores ? 'Scores available' : 'Awaiting feature data'}</strong><small>{hasScores ? `Fire signal ${formatScore(event.fire_likelihood)} · uncertainty ${formatScore(event.uncertainty)} · priority ${formatScore(event.priority_score)}` : 'Required scoring inputs are not attached to this candidate.'}</small></div></div>
       </div>
       <div className="evidence-context-heading"><div><p className="eyebrow">SUPPORTING CONTEXT</p><h3>What else is known</h3></div><button className="context-action" type="button" onClick={() => setActiveTab('investigation')}>Open investigation <ArrowRight aria-hidden="true" /></button></div>
+      <div className="environmental-analysis-action">
+        <div><span className="detail-label">SOURCE BASED ENVIRONMENTAL ANALYSIS</span><p>{environmental?.status === 'PROCESSING' ? 'Weather and population sources are being queried. This does not run the investigation agent.' : environmental?.result?.environmental_analysis?.updated_at_utc ? `Last updated ${formatTimestamp(environmental.result.environmental_analysis.updated_at_utc)} · deterministic source analysis` : 'Estimate event-time weather and potential population exposure from cited sources.'}</p></div>
+        <button className="action-button" type="button" disabled={environmentalBusy || environmental?.status === 'PROCESSING' || environmental?.status === 'COMPLETE'} onClick={startEnvironmentalAnalysis}>{environmentalBusy || environmental?.status === 'PROCESSING' ? 'Analyzing…' : environmental?.status === 'COMPLETE' ? 'Analysis complete' : environmental?.status === 'PARTIAL' ? 'Retry analysis' : 'Run environmental analysis'}</button>
+      </div>
+      {environmentalError && <p className="report-error" role="alert">Environmental analysis unavailable: {environmentalError}</p>}
       <div className="event-feature-grid">
         <ContextCard icon={<Satellite aria-hidden="true" />} title="Cross-sensor comparison" state={sensorComparison?.status} value={comparisonAvailable ? sensorComparison.result?.status?.replaceAll('_', ' ') || 'Comparison available' : null} detail={comparisonAvailable ? sensorComparison.result?.reason || 'A matched second-sensor record is attached.' : sensorComparison?.status === 'ERROR' ? sensorComparison.reason : 'No matched observation from a second sensor is attached to this candidate.'} evidenceIds={comparisonAvailable ? sensorComparison.result?.evidence_ids : null} />
-        <ContextCard icon={<UsersRound aria-hidden="true" />} title="Potential population exposure" state={exposure?.status} value={exposureAvailable && Number.isFinite(exposure.result?.population_estimate) ? `${Math.round(exposure.result.population_estimate).toLocaleString()} people (estimated)` : null} detail={exposureAvailable ? `${exposure.result?.source || 'Sourced estimate'}${exposure.result?.method ? ` · ${exposure.result.method.replaceAll('_', ' ')}` : ''}` : exposure?.status === 'ERROR' ? exposure.reason : 'No sourced population estimate is attached to this candidate.'} />
+        <ContextCard icon={<UsersRound aria-hidden="true" />} title="Potential population exposure" state={exposure?.status} value={exposureAvailable && Number.isFinite(exposure.result?.population_estimate) ? `${Math.round(exposure.result.population_estimate).toLocaleString()} people (estimated)` : null} detail={exposureAvailable ? `${exposure.result?.source || 'Sourced estimate'}${exposure.result?.method ? ` · ${exposure.result.method.replaceAll('_', ' ')}` : ''}` : exposure?.status === 'ERROR' ? exposure.reason : 'Run environmental analysis to estimate using event-time reanalysis and WorldPop.'} />
+        <ContextCard icon={<Clock3 aria-hidden="true" />} title="Event-time weather" state={environmental?.result?.environmental_analysis?.weather?.status} value={environmental?.result?.environmental_analysis?.weather?.status === 'OK' ? `${environmental.result.environmental_analysis.weather.wind_speed_m_s.toFixed(1)} m/s · ${Math.round(environmental.result.environmental_analysis.weather.wind_direction_degrees)}°` : null} detail={environmental?.result?.environmental_analysis?.weather?.status === 'OK' ? `${environmental.result.environmental_analysis.weather.source} · reanalysis estimate` : 'Available after running source based environmental analysis.'} evidenceIds={environmental?.result?.environmental_analysis?.weather?.evidence_id ? [environmental.result.environmental_analysis.weather.evidence_id] : null} />
+        <ContextCard icon={<Satellite aria-hidden="true" />} title="Monitoring blind spot" state={environmental?.result?.blind_spot?.status} value={environmental?.result?.blind_spot?.score != null ? `${environmental.result.blind_spot.score} score` : null} detail={environmental?.result?.blind_spot?.detail || 'Requires sourced acquisition coverage and quality records; a detection gap alone is not enough.'} />
       </div>
       <div className="candidate-integrity-note"><span>Evidence boundary</span><p>This record describes a satellite observation. It does not verify an active fire.</p></div>
       <details className="candidate-reference"><summary>Technical record reference</summary><code>{event.event_id}</code><span>Historical replay · Punjab and Haryana</span></details>
@@ -171,11 +228,11 @@ export default function EventDetail({ event, onClose, initialTab = 'event' }) {
 }
 
 function ContextCard({ icon, title, state, value, detail, evidenceIds }) {
-  const available = state === 'AVAILABLE';
+  const available = ['AVAILABLE', 'OK', 'ESTIMATED', 'AGREEMENT', 'DISAGREEMENT', 'INCONCLUSIVE'].includes(state);
   const loading = !state || state === 'LOADING';
   const failed = state === 'ERROR';
   return <article className={`event-feature-card${available ? ' context-available' : ''}`}>
-    <div className="context-card-heading"><span className="context-card-icon">{icon}</span><h4>{title}</h4><span className={`context-state${available ? ' is-available' : ''}`}>{loading ? 'Checking' : available ? 'Available' : failed ? 'Unavailable' : 'Not attached'}</span></div>
+    <div className="context-card-heading"><span className="context-card-icon">{icon}</span><h4>{title}</h4><span className={`context-state${available ? ' is-available' : ''}`}>{loading ? 'Checking' : available ? (state === 'ESTIMATED' ? 'Estimated' : 'Available') : failed || state === 'UNAVAILABLE' || state === 'INDEPENDENT_OBSERVATION_UNAVAILABLE' ? 'Unavailable' : state === 'NOT_RUN' || !state ? 'Not run' : 'Evidence needed'}</span></div>
     <strong>{available ? value || 'Source record attached' : loading ? 'Checking linked records…' : failed ? 'Could not load this context' : 'No source record attached'}</strong>
     <p>{detail}</p>
     {evidenceIds?.length > 0 && <small>Evidence IDs: {evidenceIds.join(', ')}</small>}

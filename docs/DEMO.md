@@ -19,19 +19,26 @@ Explain:
 - thermal evidence
 - historical pattern
 
-## 0:50–1:20 — Blind spot + verification
+## 0:50–1:20 — Environmental context
 
 Open event.
 
 Show:
 
-- blindness score
-- fire likelihood
-- sensor disagreement
+- event-time ERA5 wind, when environmental analysis has been run
+- the WorldPop estimate and its directional screening corridor
+- sensor comparison only if independent matched evidence is attached
 
 Explain that disagreement is treated as evidence, not automatic proof of a missed fire.
 
+Blind-spot scores and sensor disagreement are shown only when the replay
+contains actual sensor coverage or comparison evidence. The current GK2A-only
+replay cannot support those claims.
+
 ## 1:20–1:50 — Impact
+
+If not already prepared, select a candidate and run **Environmental analysis**.
+This queries source data and does not invoke the Investigation Agent.
 
 Show:
 
@@ -91,13 +98,14 @@ Close with:
 
 Have a deterministic local fixture ready.
 
-If live ingestion fails:
+For a bounded source-enrichment pass before the demo, use:
 
 ```text
-sample event
- → processing
- → agent
- → dashboard
+python scripts/enrich_environmental.py --region '<AWS region>' --limit 5
+
+Then refresh the event view. This invokes deterministic weather and population
+sources; use an investigation only for the event you want to inspect with the
+agent.
 ```
 
 must still work.

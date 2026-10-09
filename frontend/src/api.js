@@ -68,3 +68,5 @@ export const getReviewOutcomes = (id, signal) => request(`/events/${encodeURICom
 export const submitReviewOutcome = (id, outcome, notes, reviewerToken) => request(`/events/${encodeURIComponent(id)}/review`, { method: 'POST', body: { outcome, notes }, reviewerToken });
 export const getSensorComparison = (id, signal) => request(`/events/${encodeURIComponent(id)}/sensor-comparison`, { signal });
 export const getExposure = (id, signal) => request(`/events/${encodeURIComponent(id)}/exposure`, { signal });
+export const getEnvironmentalAnalysis = (id, signal) => request(`/events/${encodeURIComponent(id)}/environmental-analysis`, { signal });
+export const requestEnvironmentalAnalysis = (id, reviewerToken) => request(`/events/${encodeURIComponent(id)}/environmental-analysis`, { method: 'POST', reviewerToken });
