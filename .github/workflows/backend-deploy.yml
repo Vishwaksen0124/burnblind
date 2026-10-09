@@ -44,7 +44,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install backend and test dependencies
-        run: python -m pip install -e '.[dev,aws]'
+        run: python -m pip install -e '.[dev,aws,agent]'
 
       - name: Run backend unit tests
         run: pytest -q
