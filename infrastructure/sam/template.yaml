@@ -440,6 +440,39 @@ Resources:
     Metadata:
       BuildMethod: makefile
 
+  EnvironmentalAnalysisTriggerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-environmental-trigger'
+      Timeout: 30
+      MemorySize: 256
+      CodeUri: ../../
+      Handler: backend.features.trigger.lambda_handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref EventsTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:DescribeStream
+                - dynamodb:GetRecords
+                - dynamodb:GetShardIterator
+              Resource: !GetAtt EventsTable.StreamArn
+            - Effect: Allow
+              Action: dynamodb:ListStreams
+              Resource: '*'
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt EnvironmentalAnalysisQueue.QueueName
+      Events:
+        NewCandidateEvent:
+          Type: DynamoDB
+          Properties:
+            Stream: !GetAtt EventsTable.StreamArn
+            StartingPosition: LATEST
+            BatchSize: 10
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+
   EnvironmentalAnalysisFunction:
     Type: AWS::Serverless::Function
     Properties:

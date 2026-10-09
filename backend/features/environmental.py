@@ -64,6 +64,10 @@ class EnvironmentalAnalysisService:
             "detail": "Blind-spot scoring requires sourced sensor coverage and quality measurements.",
             "evidence_ids": [row.get("observation_id") for row in coverage if row.get("observation_id")],
         }
+        historical_context = {
+            "status": "UNAVAILABLE",
+            "detail": "No separately sourced historical fire-activity context is attached to this event.",
+        }
 
         complete = weather.get("status") == "OK" and exposure.get("status") in {"OK", "ESTIMATED"}
         context = {
@@ -71,15 +75,71 @@ class EnvironmentalAnalysisService:
                 "status": "COMPLETE" if complete else "PARTIAL",
                 "updated_at_utc": _iso_now(),
                 "weather": weather,
+                "historical_context": historical_context,
             },
             "exposure": exposure,
             "sensor_comparison": comparison,
             "blind_spot": blind_spot,
+            "monitoring_coverage": {
+                "status": "AVAILABLE" if coverage else "UNAVAILABLE",
+                "evidence_ids": blind_spot["evidence_ids"],
+                "detail": None if coverage else "No source-backed sensor coverage and quality record is attached.",
+            },
         }
         writer = getattr(self.events, "put_feature_context", None)
         if writer:
             writer(event_id, context)
+            if complete:
+                self._persist_score_features(event, rows, context, writer)
         return {"event_id": event_id, **context}
+
+    def _persist_score_features(self, event: Any, rows: list[dict[str, Any]], context: dict[str, Any], writer: Any) -> None:
+        """Persist only normalized, source-backed inputs for deterministic scoring."""
+        from backend.processing.feature_derivation import derive_score_features
+
+        observations = [
+            {
+                "observed_at_utc": row.get("observed_at_utc"),
+                "brightness_temperature_difference_ref": row.get("brightness_temperature_difference_ref"),
+                "evidence_id": row.get("observation_id"),
+            }
+            for row in rows
+            if row.get("brightness_temperature_difference_ref") is not None
+        ]
+        comparison = context.get("sensor_comparison") or {}
+        exposure = context.get("exposure") or {}
+        packet = {
+            "observations": observations,
+            "sensor_comparison": {
+                **comparison,
+                "evidence_ids": [comparison["evidence_id"]] if comparison.get("evidence_id") else [],
+            },
+            "exposure": {
+                "population_estimate": exposure.get("population_estimate"),
+                "evidence_ids": [exposure["evidence_id"]] if exposure.get("evidence_id") else [],
+            },
+        }
+        derived = derive_score_features(
+            packet,
+            event_time_utc=event.detected_at_utc,
+            normalization={
+                "max_observation_gap_hours": 24,
+                "thermal_signal_max_delta_k": 30,
+                "historical_hits_per_year_max": 10,
+                "exposure_population_max": 1_000_000,
+            },
+            version="features-v2-environmental",
+        )
+        writer(event.event_id, {"score_features": {
+            name: getattr(derived.features, name)
+            for name in (
+                "observation_gap_risk", "sensor_coverage_gap", "data_quality_risk",
+                "timing_risk", "thermal_signal", "historical_activity",
+                "independent_detection_support", "exposure_score", "urgency_score",
+                "sensor_disagreement",
+            )
+            if getattr(derived.features, name) is not None or name == "sensor_disagreement"
+        }})
 
     def _weather(self, event: Any) -> dict[str, Any]:
         if self.weather_lookup is None:
@@ -97,6 +157,10 @@ class EnvironmentalAnalysisService:
             "source_version": observation.source_version, "observed_at_utc": observed,
             "wind_speed_m_s": observation.wind_speed_m_s,
             "wind_direction_degrees": observation.wind_direction_degrees,
+            "temperature_c": observation.temperature_c,
+            "relative_humidity_percent": observation.relative_humidity_percent,
+            "precipitation_mm": observation.precipitation_mm,
+            "cloud_cover_percent": observation.cloud_cover_percent,
             "interpretation": "Historical reanalysis estimate; not a direct local measurement.",
         }
         self.evidence.put_derived_record({

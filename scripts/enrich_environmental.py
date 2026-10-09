@@ -3,6 +3,7 @@
 Examples:
   python scripts/enrich_environmental.py --event-id evt_... --region ap-south-1
   python scripts/enrich_environmental.py --limit 5 --region ap-south-1
+    python scripts/enrich_environmental.py --all --region ap-south-1
 """
 
 from __future__ import annotations
@@ -22,10 +23,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--region", required=True, help="AWS region containing the replay tables")
     parser.add_argument("--event-id", help="Enrich exactly one event")
+    parser.add_argument("--all", action="store_true", help="Process every event in the table")
     parser.add_argument("--limit", type=int, default=1, help="Maximum events to process (default: 1; max: 100)")
     parser.add_argument("--pause-seconds", type=float, default=1.0, help="Delay between events for provider rate control")
     args = parser.parse_args()
-    if not args.event_id and not 1 <= args.limit <= 100:
+    if args.event_id and args.all:
+        parser.error("choose --event-id or --all, not both")
+    if not args.event_id and not args.all and not 1 <= args.limit <= 100:
         parser.error("--limit must be between 1 and 100")
     if args.pause_seconds < 0:
         parser.error("--pause-seconds cannot be negative")
@@ -40,7 +44,9 @@ def main() -> int:
     dynamodb = boto3.resource("dynamodb", region_name=args.region)
     events = DynamoCandidateEventRepository(event_table, dynamodb.Table(event_table))
     evidence = DynamoEvidenceRepository(evidence_table, dynamodb.Table(evidence_table))
-    selected = [events.get(args.event_id)] if args.event_id else events.all()[:args.limit]
+    selected = [events.get(args.event_id)] if args.event_id else events.all()
+    if not args.all and not args.event_id:
+        selected = selected[:args.limit]
     selected = [event for event in selected if event is not None]
     if not selected:
         print(json.dumps({"processed": 0, "reason": "No matching events."}))

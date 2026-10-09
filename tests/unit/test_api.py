@@ -94,10 +94,14 @@ def test_investigation_queue_returns_accepted_and_current_status():
                 "completed_at_utc": "2025-10-01T07:00:03Z",
             }
 
+    class ReviewStore:
+        def list_for_event(self, event_id, limit=1):
+            return [{"event_id": event_id, "outcome": "NEEDS_VERIFICATION"}]
+
     event_id = "evt_000000000000000000000001"
     queued = handle_request(
         "POST", f"/events/{event_id}/investigate", {}, repository(), "request-456",
-        investigation_launcher=Launcher(),
+        investigation_launcher=Launcher(), review_store=ReviewStore(),
         reviewer_id="reviewer-sub-123",
     )
     current = handle_request(

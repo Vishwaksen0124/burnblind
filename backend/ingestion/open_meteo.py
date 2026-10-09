@@ -42,6 +42,12 @@ def _optional_number(values: Any, index: int, name: str) -> float | None:
     return float(value)
 
 
+def _available_number(values: Any, index: int, name: str) -> float | None:
+    if values is None:
+        return None
+    return _optional_number(values, index, name)
+
+
 def historical_wind(
     latitude: float,
     longitude: float,
@@ -64,7 +70,7 @@ def historical_wind(
             "longitude": longitude,
             "start_date": event_time.date().isoformat(),
             "end_date": event_time.date().isoformat(),
-            "hourly": "wind_speed_10m,wind_direction_10m",
+            "hourly": "temperature_2m,relative_humidity_2m,precipitation,cloud_cover,wind_speed_10m,wind_direction_10m",
             "wind_speed_unit": "ms",
             "timezone": "UTC",
             "models": MODEL,
@@ -82,8 +88,12 @@ def historical_wind(
     try:
         index = times.index(target_text)
     except ValueError:
-        speed = direction = None
+        temperature = humidity = precipitation = cloud_cover = speed = direction = None
     else:
+        temperature = _available_number(hourly.get("temperature_2m"), index, "temperature_2m")
+        humidity = _available_number(hourly.get("relative_humidity_2m"), index, "relative_humidity_2m")
+        precipitation = _available_number(hourly.get("precipitation"), index, "precipitation")
+        cloud_cover = _available_number(hourly.get("cloud_cover"), index, "cloud_cover")
         speed = _optional_number(hourly.get("wind_speed_10m"), index, "wind_speed_10m")
         direction = _optional_number(hourly.get("wind_direction_10m"), index, "wind_direction_10m")
 
@@ -95,4 +105,8 @@ def historical_wind(
         wind_direction_degrees=direction,
         source="OPEN_METEO_ERA5_REANALYSIS",
         source_version="open-meteo-archive:era5",
+        temperature_c=temperature,
+        relative_humidity_percent=humidity,
+        precipitation_mm=precipitation,
+        cloud_cover_percent=cloud_cover,
     )

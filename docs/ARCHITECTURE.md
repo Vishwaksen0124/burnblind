@@ -6,6 +6,20 @@ Use a serverless, event-driven architecture.
 
 Keep the environmental intelligence engine independent from the frontend and from the Investigation Agent.
 
+The canonical processing order is:
+
+```text
+event ingestion/replay
+       → environmental analysis for every event
+       → deterministic score and priority calculation
+       → human review of evidence and reasons
+       → Investigation Agent when the reviewer requests it
+       → investigation outcome and audit trail
+```
+
+Environmental analysis enriches evidence; it does not calculate core scores
+or invoke the agent. Missing and late sources are represented explicitly.
+
 ## 2. Architecture
 
 ```text
@@ -52,7 +66,7 @@ Keep the environmental intelligence engine independent from the frontend and fro
                                     │ Engine            │
                                     └─────────┬─────────┘
                                               │
-                                 high priority / uncertainty
+                                                                                                          accepted human review
                                               │
                                               ▼
                                     ┌───────────────────┐

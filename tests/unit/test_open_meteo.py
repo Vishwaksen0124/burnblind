@@ -14,6 +14,10 @@ def test_historical_wind_requests_era5_in_utc_and_returns_hourly_values():
         return {
             "hourly": {
                 "time": ["2025-10-01T07:00"],
+                "temperature_2m": [18.5],
+                "relative_humidity_2m": [61],
+                "precipitation": [0.2],
+                "cloud_cover": [42],
                 "wind_speed_10m": [3.2],
                 "wind_direction_10m": [240],
             }
@@ -32,6 +36,10 @@ def test_historical_wind_requests_era5_in_utc_and_returns_hourly_values():
     assert weather.observed_at_utc.isoformat() == "2025-10-01T07:00:00+00:00"
     assert weather.wind_speed_m_s == 3.2
     assert weather.wind_direction_degrees == 240
+    assert weather.temperature_c == 18.5
+    assert weather.relative_humidity_percent == 61
+    assert weather.precipitation_mm == 0.2
+    assert weather.cloud_cover_percent == 42
     assert weather.source == "OPEN_METEO_ERA5_REANALYSIS"
 
 
