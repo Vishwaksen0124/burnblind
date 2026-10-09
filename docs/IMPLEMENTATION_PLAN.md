@@ -237,7 +237,7 @@ can still request an override from the event detail view.
 
 The event detail UI presents qualification reasons, report status, evidence, sensor comparison, exposure availability, and human-review outcomes.
 The feature derivation and score-trigger code are implemented and unit-tested, but the seed pipeline still does not attach complete `score_features`; replay seed rows therefore remain unscored.
-Source assembly happens before model invocation. The model receives only the event-scoped JSON packet, and unavailable evidence is represented explicitly. Live model authorization has not been revalidated from a least-privilege AWS identity.
+Source assembly happens before model invocation. The model receives only the event-scoped JSON packet, and unavailable evidence is represented explicitly. On 2026-10-09 the OIDC deployment completed, then one event-scoped investigation invoked `deepseek.v3.2`, completed in about 25 seconds, and persisted a cited report. Broader model scenarios and automatically qualified events remain unverified because the replay seed has no score features.
 
 ## Phase 15 — Agent evaluation
 
