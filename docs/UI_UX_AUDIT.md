@@ -2,7 +2,7 @@
 
 **Audited:** 2026-10-09  
 **Implementation inspected:** React 18 + Vite, React Leaflet/Leaflet, `lucide-react`, shared CSS in `frontend/src/styles.css` and `features.css`. No component library is installed.  
-**Rendered review:** Local Vite app using the deployed read-only API. Chrome headless captures reviewed at 1440×1100, 768×1024, and 390×844. Desktop captures were made for landing, monitoring, replay, investigations, how-it-works, and methodology. Event detail/report was inspected in source; a selected-event browser state was not captured in this pass.  
+**Rendered review:** React app using the deployed read-only API. Chrome captures reviewed at 1440×1100, 768×1024, and 390×844. The production landing, monitoring, and investigations screens were captured at desktop/mobile sizes; monitoring was also captured at tablet size. All six routes were opened in the deployed app. Event detail and the report-to-review action were exercised in a read-only browser session.
 **Specification references:** `docs/frontend_implementation.md`, `docs/BurnBlind_FRONTEND_IMPLEMENTATION_SPEC.md`, `docs/API_SPEC.md`, and `docs/feature-upgrade/docs/FRONTEND_IMPLEMENTATION_V2.md`.
 
 This is an audit of the current implementation and observed renders, not a claim that every asynchronous state was browser-rendered. Existing API-backed loading, empty, error, and partial-availability branches were inspected in the corresponding components.
@@ -53,6 +53,30 @@ This is an audit of the current implementation and observed renders, not a claim
 3. Investigation report and list hierarchy; seven-stage workflow layout.
 4. Accessible controls, route/state regression review, and desktop/tablet/mobile screenshots.
 
-## Validation record
+## Refinement and validation record
 
-Initial visual inspection commands used the existing `npm run dev` command with the production read-only API configuration and Chrome headless screenshots. Captures were written to `/tmp` for inspection and are not product assets. `npm run build` and route/interaction/state checks will be recorded after the refinement. No frontend edits have been made before this audit.
+### Changes implemented
+
+- Added a shared readable type/control scale and restrained semantic colors; enlarged page copy, table/queue metadata, form labels, badges, controls, and touch targets. Removed the empty eighth workflow cell and removed alternating cool-toned workflow fills.
+- Reflowed the shared header at tablet/mobile widths. On narrow screens a labeled menu button opens the route list; reviewer sign-in remains visible and the active route stays marked.
+- Replaced dashboard/replay/event-detail glyphs with Lucide icons. Candidate titles now use coordinates from their event record. The queue reports loaded and total counts separately (`100 of 100 loaded · 250 total candidates` in the checked production dataset).
+- Grouped close map markers into zoomable spatial clusters. The production 100 candidate records rendered as 26 cluster/point markers at the default map zoom. Selecting a single point still opens that event; cluster selection zooms in.
+- A non-event map layer now displays only its own sourced features. Empty layers show the API's reason, an unavailable dash rather than a zero, and a “Show candidate events” action. The checked replay currently has no blind-spot, matched sensor-comparison, or potential-exposure records, so those layers state their limits without retaining candidate markers.
+- Investigation cards now keep the persisted summary, cited-record/uncertainty/evidence-gap counts, recommendation, status, and event reference visible. A disclosure renders evidence source/type/IDs, contradictions, unavailable evidence, uncertainty, and recommendations. “Open event review” fetches the full event and opens the existing investigation/retry and human-review form. A failed report offers the existing retry path. Outcome writes still require invited reviewer authentication.
+- Rebalanced the product hero so the main phrase wraps deliberately and retained its NASA attribution and existing background image. Replaced replay arrow and close glyphs with Lucide icons.
+
+### Validation actually run
+
+- `cd frontend && npm run build` — passed with Vite 6.4.4.
+- GitHub `Dashboard CI/CD` run `37893061753` for commit `904b7c3` — passed frontend dependency audit, build, AWS OIDC setup, and Amplify publish. Amplify main deployment job `38` — `SUCCEED`. Production bundle served at `https://main.d3k8g1d6au7814.amplifyapp.com`.
+- Chrome production captures reviewed at 1440×1100, 768×1024, and 390×844 for monitoring, and desktop/mobile for investigations. Product landing was captured at 1440×1100. All six routes opened in the deployed application and reported no horizontal overflow at 1440px.
+- Read-only browser checks against production event/report data verified 100 visible queue rows, the explicit 100-loaded/250-total scope, spatially grouped markers, no horizontal overflow, and the responsive navigation open/route behavior. The three alternate map layers returned their specific unavailable reasons; each removed event markers and used “—” in the count.
+- The deployed investigations endpoint returned four saved records (three completed, one failed at the time checked). The full-report disclosure showed evidence/provenance, uncertainty, and recommendation sections. “Open event review” loaded the selected event on its investigation tab and exposed the retry/review form plus reviewer sign-in action. No POST request or investigation/review write was made during UI verification.
+- Production browser route checks recorded no JavaScript console errors. Existing project has no frontend test or lint script; no test framework was added for this visual refinement.
+- Scoped `git diff --check` for the changed frontend paths passed. The repository has a pre-existing trailing-space change in `backend/api/repository.py`; it was left untouched and unstaged.
+
+### Remaining validation limits
+
+- Screen-reader testing and a formal automated contrast-ratio audit were not performed. Browser viewport/overflow checks do not replace testing with assistive technology.
+- The three alternate map layers currently have no sourced records in the replay. The UI correctly reports that availability; populated overlay styling cannot be verified until the API contains sourced records.
+- The human-review submit path requires the invited reviewer to complete first sign-in and change the emailed temporary password. No review outcome was submitted as part of the UI check.
