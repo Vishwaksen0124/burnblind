@@ -86,7 +86,7 @@ export default function ProductPage() {
     </section>
 
     <section className="agent-section">
-      <div className="agent-index">06 / INVESTIGATION AGENT</div><div><h2>Evidence organized<br />for human review.</h2><p>Strands assembles source-backed findings, contradictions, missing evidence, and a human-review recommendation from one event-scoped packet. Bedrock Mantle is the configured provider; the report is advisory and does not make operational decisions.</p><p className="agent-status"><i /> Model invocation depends on the deployed AWS account authorization.</p></div><a className="secondary-button" href="#investigations">Investigation details <span aria-hidden="true">→</span></a>
+      <div className="agent-index">06 / INVESTIGATION AGENT</div><div><h2>Evidence organized<br />for human review.</h2><p>Strands assembles source-backed findings, contradictions, missing evidence, and a human-review recommendation from one event-scoped packet. Bedrock Mantle with DeepSeek V3.2 completed a live event-scoped smoke investigation on 09 Oct 2026; the report remains advisory and makes no operational decisions.</p><p className="agent-status"><i /> Live model path verified · one event · 25 seconds</p></div><a className="secondary-button" href="#investigations">Investigation details <span aria-hidden="true">→</span></a>
     </section>
 
     <section className="final-cta"><div className="section-index">07 / EXPLORE THE REPLAY</div><h2>Start with what<br />the satellites <em>observed.</em></h2><p>Explore grouped thermal observations across Punjab and Haryana, with source context and uncertainty kept in view.</p><a className="primary-button" href="#monitoring">Open monitoring <span aria-hidden="true">→</span></a></section>

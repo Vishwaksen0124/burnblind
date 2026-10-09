@@ -1,6 +1,6 @@
 # BurnBlind — Master Checklist
 
-## Current implementation status (2026-10-09)
+## Current implementation status (2026-10-09, post-deployment smoke)
 
 The application foundation and feature code are substantially implemented, but
 the end-to-end release is **not complete**. A checked implementation item does
@@ -8,12 +8,12 @@ not imply that its live data source or deployed AWS path has been verified.
 
 | Area | Implemented | Still required for release |
 | --- | --- | --- |
-| Frontend | Landing, monitoring, event detail, investigation, replay, and methodology views; responsive map-first UI | Browser review of wide-screen layout and AWS-backed page smoke check |
+| Frontend | Landing, monitoring, event detail, investigation, replay, and methodology views; responsive map-first UI; Amplify CI deployment returned HTTP 200 | Browser interaction and visual review at desktop/mobile widths |
 | Feature upgrade | Scoring, comparison, exposure, replay, human outcome, event-scoped agent paths exist in code | Attach complete historical/coverage/score evidence to replay; live-source validation |
-| Agent | Strands integration, structured evidence packet/report, DeepSeek V3.2 Mantle config | Successful post-deployment model invocation and scenario evaluation |
-| AWS | Amplify frontend and SAM backend stack are defined; OIDC workflows are configured | Backend workflow deployment and API smoke test; verify runtime permissions and queue path |
+| Agent | Strands integration, event-scoped evidence packet/report, DeepSeek V3.2 Mantle; one post-deployment investigation completed and appeared in the persisted investigations API | Broader scenario evaluation and failure/retry integration tests |
+| AWS | Amplify and backend OIDC workflows passed; SAM stack deployed; health, summary, event, action-center, investigation, map-layer and CORS smoke checks passed; one queue-to-report flow verified | Security/cost review and ongoing operational verification |
 | Data | GK2A replay sample is present; weather and WorldPop adapters are implemented | FIRMS key/reference data, licensing review, live source checks, full artifact lifecycle |
-| Quality | 77 local tests, current frontend production build, SAM validation | Integration/e2e, security and cost review |
+| Quality | 77 tests, production frontend build, SAM validation, API/queue/model smoke checks | Browser e2e, broader integration, security and cost review |
 
 The missing SAM transform permission has now been applied to the dedicated
 CloudFormation execution role. Backend deployment and the model invocation
@@ -80,7 +80,7 @@ remain unverified until the next workflow and deployed API smoke check pass.
 - [x] API Gateway
 - [ ] EventBridge
 - [x] CloudWatch log retention
-- [x] Amplify manual deployment
+- [x] Amplify deployment through GitHub Actions OIDC
 - [x] Public GitHub repository and GitHub Actions OIDC CI/CD
 
 ## Frontend
@@ -149,10 +149,10 @@ remain unverified until the next workflow and deployed API smoke check pass.
 - [x] sam build --template-file infrastructure/sam/template.yaml
 - [x] Confirmed the built Event API includes backend/processing; the investigator includes backend/impact and backend/processing
 - [x] Frontend includes live-loaded replay distribution, source counts, source limitations, investigation input/output documentation, review outcomes, and replay controls
-- [ ] Backend changes deployed and smoke-tested against AWS
+- [x] Backend changes deployed and smoke-tested against AWS
 - [x] CI/CD role expanded with a repository/branch-scoped SAM deployment role and runtime permissions boundary
 - [ ] NASA FIRMS MAP_KEY stored in AWS Secrets Manager and historical comparison records acquired
-- [ ] Live model invocation and investigation verified after AWS role setup
+- [x] One live DeepSeek V3.2 investigation completed after AWS role setup; report persisted and returned by the investigations API
 - [ ] Historical context and observation-coverage records attached to replay events before publishing score or blindness layers
 
 **Release note:** frontend and backend use separate GitHub OIDC roles scoped to this repository's `main` branch. The backend deploy role can update only `burnblind-replay` and pass the dedicated CloudFormation execution role. Lambda roles receive the `BurnBlindRuntimeBoundary` permissions boundary. Backend deployment through this workflow is still pending the first CI run. No FIRMS key was found in Secrets Manager or GitHub secrets; provide only its Secrets Manager ARN/name, never the key value in chat.
