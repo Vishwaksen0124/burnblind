@@ -61,13 +61,13 @@ class DynamoCandidateEventRepository:
         """Batch-load feature summaries for a map layer without per-marker reads."""
         if not event_ids:
             return {}
-        from boto3.dynamodb.types import TypeDeserializer
-
         table_name = self._table.name
         client = self._table.meta.client
-        deserializer = TypeDeserializer()
+        # Native Python key values: this client comes from a DynamoDB resource
+        # table, so botocore already serializes keys. AttributeValue maps such as
+        # {"S": event_id} are re-encoded and rejected as a schema mismatch.
         pending = {table_name: {
-            "Keys": [{"event_id": {"S": event_id}} for event_id in event_ids[:100]],
+            "Keys": [{"event_id": event_id} for event_id in event_ids[:100]],
             "ConsistentRead": True,
         }}
         items: list[dict[str, Any]] = []
@@ -75,8 +75,7 @@ class DynamoCandidateEventRepository:
             if not pending:
                 break
             response = client.batch_get_item(RequestItems=pending)
-            items.extend({key: deserializer.deserialize(value) for key, value in item.items()}
-                         for item in response.get("Responses", {}).get(table_name, []))
+            items.extend(response.get("Responses", {}).get(table_name, []))
             pending = response.get("UnprocessedKeys", {})
             if pending and attempt < 4:
                 import time
