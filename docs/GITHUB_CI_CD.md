@@ -7,6 +7,8 @@
 - Pushes to `main` do the same checks, then request short-lived AWS credentials
   through GitHub OIDC and publish the build to the existing Amplify `main`
   branch.
+- The dashboard workflow can also be dispatched manually for configuration-
+  only frontend rebuilds after the backend stack has produced public outputs.
 - AWS credentials are not stored in GitHub secrets. The role is restricted to
   one repository's `main` branch and can publish only this Amplify branch.
 - `.github/workflows/backend-deploy.yml` runs backend unit tests, SAM lint
