@@ -313,6 +313,12 @@ Resources:
                   - s3:PutObject
                   - s3:PutObjectTagging
                 Resource: !Sub 'arn:${AWS::Partition}:s3:::${SamArtifactsBucket}/*'
+              - Sid: ReadOnlySamTemplateAndArtifactObjects
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                Resource: !Sub 'arn:${AWS::Partition}:s3:::${SamArtifactsBucket}/*'
 
 Outputs:
   GitHubActionsRoleArn:
