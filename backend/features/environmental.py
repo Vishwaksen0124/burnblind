@@ -126,7 +126,7 @@ class EnvironmentalAnalysisService:
             "observations": observations,
             "sensor_comparison": {
                 **comparison,
-                "evidence_ids": [comparison["evidence_id"]] if comparison.get("evidence_id") else [],
+                "evidence_ids": comparison.get("evidence_ids", []),
             },
             "exposure": {
                 "population_estimate": exposure.get("population_estimate"),
