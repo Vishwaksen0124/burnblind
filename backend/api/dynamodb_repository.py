@@ -47,6 +47,45 @@ class DynamoCandidateEventRepository:
             if key in item
         }
 
+    def get_scoring_contexts(self, event_ids: list[str]) -> dict[str, dict[str, Any]]:
+        if not event_ids:
+            return {}
+        table_name = self._table.name
+        client = self._table.meta.client
+        keys = (
+            "blindness_score", "fire_likelihood_score", "uncertainty", "priority_score",
+            "provisional_priority_score", "priority_status", "score_version", "feature_version",
+            "evidence_completeness", "investigation_qualifies", "investigation_trigger_reasons",
+            "investigation_status",
+        )
+        items: list[dict[str, Any]] = []
+        for offset in range(0, len(event_ids), 100):
+            pending = {table_name: {
+                "Keys": [{"event_id": event_id} for event_id in event_ids[offset:offset + 100]],
+                "ConsistentRead": True,
+                "ProjectionExpression": "event_id, " + ", ".join(keys),
+            }}
+            for attempt in range(5):
+                if not pending:
+                    break
+                response = client.batch_get_item(RequestItems=pending)
+                items.extend(response.get("Responses", {}).get(table_name, []))
+                pending = response.get("UnprocessedKeys", {})
+                if pending and attempt < 4:
+                    import time
+
+                    time.sleep(0.05 * (2 ** attempt))
+            if pending:
+                raise RuntimeError("DynamoDB returned unprocessed event score keys")
+        return {
+            str(item["event_id"]): {
+                key: _plain_number(item[key])
+                for key in keys
+                if key in item
+            }
+            for item in items
+        }
+
     def get_feature_context(self, event_id: str) -> dict[str, Any] | None:
         """Return allowlisted, source-backed feature records attached to an event."""
         item = self._table.get_item(Key={"event_id": event_id}, ConsistentRead=True).get("Item")
