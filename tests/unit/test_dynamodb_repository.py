@@ -1,5 +1,8 @@
 from datetime import datetime, timezone
 from decimal import Decimal
+from types import SimpleNamespace
+
+from boto3.dynamodb.types import TypeSerializer
 
 from backend.api.dynamodb_repository import DynamoCandidateEventRepository
 from backend.api.repository import EventFilters
@@ -112,3 +115,31 @@ def test_dynamo_repository_returns_heuristic_score_context():
     assert context["priority_score"] == 0.6
     assert context["investigation_status"] == "QUEUED"
     assert context["investigation_trigger_reasons"] == ["HIGH_PRIORITY"]
+
+
+def test_dynamo_repository_batch_feature_context_uses_base_table_key():
+    event, item = make_event("evt_000000000000000000000001", 1)
+    item["blind_spot"] = {"status": "UNAVAILABLE"}
+
+    class BatchClient:
+        def __init__(self):
+            self.requests = []
+
+        def batch_get_item(self, **kwargs):
+            self.requests.append(kwargs)
+            serializer = TypeSerializer()
+            return {"Responses": {"Events": [{
+                "event_id": serializer.serialize(item["event_id"]),
+                "blind_spot": serializer.serialize(item["blind_spot"]),
+            }]}}
+
+    client = BatchClient()
+    table = SimpleNamespace(name="Events", meta=SimpleNamespace(client=client))
+    repository = DynamoCandidateEventRepository("Events", table=table)
+
+    assert repository.get_feature_contexts([event.event_id]) == {
+        event.event_id: {"blind_spot": {"status": "UNAVAILABLE"}},
+    }
+    assert client.requests[0]["RequestItems"]["Events"]["Keys"] == [
+        {"event_id": {"S": event.event_id}},
+    ]

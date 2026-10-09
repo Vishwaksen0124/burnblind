@@ -61,14 +61,13 @@ class DynamoCandidateEventRepository:
         """Batch-load feature summaries for a map layer without per-marker reads."""
         if not event_ids:
             return {}
-        from boto3.dynamodb.types import TypeDeserializer, TypeSerializer
+        from boto3.dynamodb.types import TypeDeserializer
 
         table_name = self._table.name
         client = self._table.meta.client
-        serializer = TypeSerializer()
         deserializer = TypeDeserializer()
         pending = {table_name: {
-            "Keys": [{"event_id": serializer.serialize(event_id)} for event_id in event_ids[:100]],
+            "Keys": [{"event_id": {"S": event_id}} for event_id in event_ids[:100]],
             "ConsistentRead": True,
         }}
         items: list[dict[str, Any]] = []
