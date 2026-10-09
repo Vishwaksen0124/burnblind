@@ -1,5 +1,24 @@
 # BurnBlind — Master Checklist
 
+## Current implementation status (2026-10-09)
+
+The application foundation and feature code are substantially implemented, but
+the end-to-end release is **not complete**. A checked implementation item does
+not imply that its live data source or deployed AWS path has been verified.
+
+| Area | Implemented | Still required for release |
+| --- | --- | --- |
+| Frontend | Landing, monitoring, event detail, investigation, replay, and methodology views; responsive map-first UI | Browser review of wide-screen layout and AWS-backed page smoke check |
+| Feature upgrade | Scoring, comparison, exposure, replay, human outcome, event-scoped agent paths exist in code | Attach complete historical/coverage/score evidence to replay; live-source validation |
+| Agent | Strands integration, structured evidence packet/report, DeepSeek V3.2 Mantle config | Successful post-deployment model invocation and scenario evaluation |
+| AWS | Amplify frontend and SAM backend stack are defined; OIDC workflows are configured | Backend workflow deployment and API smoke test; verify runtime permissions and queue path |
+| Data | GK2A replay sample is present; weather and WorldPop adapters are implemented | FIRMS key/reference data, licensing review, live source checks, full artifact lifecycle |
+| Quality | 77 local tests, current frontend production build, SAM validation | Integration/e2e, security and cost review |
+
+The missing SAM transform permission has now been applied to the dedicated
+CloudFormation execution role. Backend deployment and the model invocation
+remain unverified until the next workflow and deployed API smoke check pass.
+
 ## Hackathon
 
 - [x] Read current official event page

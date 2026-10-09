@@ -3,18 +3,19 @@ import { getInvestigations } from '../api.js';
 import { PageHeading, StateMessage } from './shared.jsx';
 
 const PIPELINE = [
-  ['01', 'Observe', 'Collect satellite and environmental observations with source and time metadata.'],
-  ['02', 'Find monitoring gaps', 'Identify periods and places where observation coverage is incomplete or uncertain.'],
-  ['03', 'Detect', 'Group potential thermal observations into candidate events. A detection is not ground truth.'],
-  ['04', 'Assess impact', 'Estimate potential downwind exposure when weather and population inputs are available.'],
-  ['05', 'Prioritize', 'Combine validated evidence, monitoring blindness, and impact to rank events.'],
-  ['06', 'Investigate', 'Cross-check important or uncertain events and present evidence for human review.'],
+  { number: '01', title: 'Observe', copy: 'Start with a source record and preserve its timestamp, coordinates, sensor and provenance.', input: 'GK2A AMI historical replay', result: 'Normalized observations in UTC and a shared 5 km grid', state: 'Active in replay' },
+  { number: '02', title: 'Group candidates', copy: 'Nearby records are grouped only within the configured grid and time window; stable IDs keep an event traceable.', input: 'Validated observations', result: 'One candidate event with its linked source records', state: 'Active in replay' },
+  { number: '03', title: 'Assess coverage', copy: 'Coverage, data quality and history can add context when sourced records exist. Missing records stay unavailable.', input: 'Coverage and historical records', result: 'Blindness and historical features, when available', state: 'Inputs incomplete in replay' },
+  { number: '04', title: 'Compare and estimate', copy: 'Independent sensor matches, event-hour weather and population estimates remain separately sourced and labeled.', input: 'Matched detections, ERA5 and WorldPop', result: 'Comparison and potential exposure with limitations', state: 'Per-event availability' },
+  { number: '05', title: 'Triage', copy: 'Versioned deterministic rules rank only events with the required feature inputs. Missing values do not become zero.', input: 'Validated score features', result: 'Priority and a recorded qualification reason', state: 'Seed events currently unscored' },
+  { number: '06', title: 'Investigate', copy: 'A selected or qualifying event gets one bounded evidence packet. Strands uses the configured DeepSeek provider to produce a structured report.', input: 'One event and its assembled evidence packet', result: 'Cited findings, uncertainty and a human-review recommendation', state: 'Deployment verification pending' },
+  { number: '07', title: 'Review and learn', copy: 'A person records an outcome against the candidate; replay and evaluation keep the result auditable.', input: 'Investigation report and reviewer decision', result: 'Append-only human outcome for later evaluation', state: 'Review flow implemented' },
 ];
 
 export function HowItWorksPage() {
   return <>
     <PageHeading eyebrow="SYSTEM OVERVIEW" title="How BurnBlind works">A transparent workflow for finding potential events that deserve a closer look.</PageHeading>
-    <section className="pipeline" aria-label="BurnBlind monitoring pipeline">{PIPELINE.map(([number, title, copy]) => <article className="pipeline-step" key={number}><span className="pipeline-number">{number}</span><div><h2>{title}</h2><p>{copy}</p></div><span className="pipeline-arrow" aria-hidden="true">↘</span></article>)}</section>
+    <section className="pipeline" aria-label="BurnBlind monitoring pipeline">{PIPELINE.map(({ number, title, copy, input, result, state }) => <article className="pipeline-step" key={number}><span className="pipeline-number">{number}</span><div className="pipeline-main"><h2>{title}</h2><p>{copy}</p><div className="pipeline-io"><p><span>INPUT</span>{input}</p><p><span>OUTPUT</span>{result}</p></div></div><span className="pipeline-state">{state}</span></article>)}</section>
     <p className="science-note"><strong>Scientific boundary</strong> BurnBlind identifies potential monitoring gaps and cross-source differences. It does not claim a confirmed fire without independent ground truth.</p>
   </>;
 }
