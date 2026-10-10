@@ -57,27 +57,22 @@ class EnvironmentalAnalysisService:
         except Exception as exc:
             comparison = {"status": "UNAVAILABLE", "detail": f"Sensor comparison error: {type(exc).__name__}."}
 
-        coverage = [row for row in self.evidence.list_for_event(event_id)
-                    if row.get("evidence_type") == "SENSOR_COVERAGE"]
-        coverage_ids = [row.get("observation_id") for row in coverage if row.get("observation_id")]
-        valid_coverage = [
-            row for row in coverage
-            if isinstance(row.get("record"), dict)
-            and row["record"].get("quality_valid") is True
-        ]
-        blind_spot = (
-            {
-                "status": "AVAILABLE",
-                "score": 0.0,
-                "detail": "Quality-valid independent sensor coverage is attached for this event.",
-                "evidence_ids": coverage_ids,
-            }
-            if valid_coverage else {
-                "status": "UNAVAILABLE",
-                "detail": "Blind-spot scoring requires sourced sensor coverage and quality measurements.",
-                "evidence_ids": coverage_ids,
-            }
-        )
+        coverage = [row for row in rows if row.get("evidence_type") == "SENSOR_COVERAGE"]
+        valid_coverage = [row for row in coverage if _valid_scoring_coverage(row)]
+        coverage_ids = sorted({row["record"]["evidence_id"] for row in valid_coverage})
+        scored_coverage = next((row for row in valid_coverage if _has_blindness_score(row["record"])), None)
+        blind_spot = ({
+            "status": "AVAILABLE",
+            "score": float(scored_coverage["record"]["blindness_score"]),
+            "score_version": scored_coverage["record"]["score_version"],
+            "detail": "Normalized observability score calculated from supplied coverage measurements.",
+            "evidence_ids": scored_coverage["record"]["score_evidence_ids"],
+        } if scored_coverage else {
+            "status": "UNAVAILABLE",
+            "score": None,
+            "detail": "No validated coverage record with normalized blind-spot inputs and a versioned score is attached.",
+            "evidence_ids": coverage_ids,
+        })
         historical_context = {
             "status": "UNAVAILABLE",
             "detail": "No separately sourced historical fire-activity context is attached to this event.",
@@ -95,7 +90,7 @@ class EnvironmentalAnalysisService:
             "sensor_comparison": comparison,
             "blind_spot": blind_spot,
             "monitoring_coverage": {
-                "status": "AVAILABLE" if coverage else "UNAVAILABLE",
+                "status": "AVAILABLE" if valid_coverage else "UNAVAILABLE",
                 "evidence_ids": coverage_ids,
                 "detail": None if valid_coverage else "No source-backed sensor coverage and quality record is attached.",
             },
@@ -271,6 +266,34 @@ class EnvironmentalAnalysisLauncher:
 
 def _digest(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()[:24]
+
+
+def _valid_scoring_coverage(row: dict[str, Any]) -> bool:
+    record = row.get("record")
+    if not isinstance(record, dict):
+        return False
+    metrics = (
+        "observation_gap_hours", "expected_sensor_count", "available_sensor_count",
+        "valid_observation_fraction", "timing_risk",
+    )
+    return (
+        record.get("quality_valid") is True
+        and record.get("detection_present") is False
+        and bool(record.get("evidence_id"))
+        and bool(record.get("source") or row.get("source"))
+        and any(record.get(name) is not None for name in metrics)
+    )
+
+
+def _has_blindness_score(record: dict[str, Any]) -> bool:
+    score = record.get("blindness_score")
+    return (
+        isinstance(score, (int, float)) and not isinstance(score, bool)
+        and 0 <= score <= 1
+        and bool(record.get("score_version"))
+        and isinstance(record.get("score_evidence_ids"), list)
+        and bool(record["score_evidence_ids"])
+    )
 
 
 def _iso(value: Any) -> str:
