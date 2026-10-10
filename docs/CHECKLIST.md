@@ -13,7 +13,7 @@ not imply that its live data source or deployed AWS path has been verified.
 | Agent | Strands integration, event-scoped evidence packet/report, DeepSeek V3.2 Mantle; cross-sensor status handling and retry race regressions covered by unit tests | Broader model scenario evaluation and live integration coverage |
 | AWS | Amplify and backend OIDC workflows passed; SAM stack deployed; health, summary, event, action-center, investigation, map-layer and CORS smoke checks passed; one queue-to-report flow verified; Cognito JWT protects both API path forms and anonymous mutation probes return 401 | Invited-reviewer write test, security/cost review and ongoing operational verification |
 | Data | GK2A replay sample is present; weather and WorldPop adapters are implemented | FIRMS key/reference data, licensing review, live source checks, full artifact lifecycle |
-| Quality | 110 tests, production frontend build, SAM validation, deployed API/CORS/auth smoke checks, production sensor map shows four sourced comparisons | Browser e2e, authenticated reviewer write, source-to-storage integration, security and cost review |
+| Quality | 115 tests, production frontend build, SAM validation, deployed API/CORS/auth smoke checks, production sensor map shows four sourced comparisons, all 250 environmental projections audited and repaired | Browser e2e, authenticated reviewer write, source-to-storage integration, security and cost review |
 
 The production S3 artifact bucket uses versioning and expires noncurrent versions
 after 90 days; incomplete multipart uploads expire after 7 days. Current object

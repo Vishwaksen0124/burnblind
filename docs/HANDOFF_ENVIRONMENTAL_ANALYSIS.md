@@ -2,12 +2,16 @@
 
 Updated 2026-10-10.
 
+See [DATA_QUALITY_AUDIT_2026-10-10.md](DATA_QUALITY_AUDIT_2026-10-10.md) for
+the completed 250-event production audit, corrections, and live verification.
+
 ## Verified current state
 
 - Backend and frontend deploy through the existing GitHub Actions OIDC workflows. Backend runs execute unit tests, SAM validation/build, deploy the SAM stack, and smoke-test the live API.
 - Commits `792904f`, `aacd856`, `c0e3a2e`, and `6ed6547` fixed stale feature fallbacks and derived-evidence pagination. The latest backend deployment completed successfully in workflow `38030910017`.
 - Production `/api/map-layers?layer=sensor-disagreement&limit=250` returns four source-matched comparisons, all `AGREEMENT`: two against `MODIS_AQUA`, one `VIIRS_NOAA20`, and one `VIIRS_SNPP`. Each has attached source evidence IDs. Agreement is not fire confirmation.
-- The production exposure map layer returns sourced estimates for 250 replay events. Blind-spot layer returns records only where actual coverage/observability inputs exist. Do not generalize these results to all events or synthesize absent data.
+- After the 2026-10-10 repair, the production exposure map layer returns sourced estimates for all 250 replay events; the blind-spot layer correctly returns unavailable with 0 items because valid coverage/observability inputs are absent. Do not synthesize absent data.
+- The 250 event environmental projections now agree with source evidence. Four sensor comparisons are unique and source matched; all report agreement, which is not confirmation. Two positive detections previously mislabeled as coverage are preserved as observations and marked invalid for coverage scoring.
 - Six NASA FIRMS observations were attached to four events from Oct–Nov 2025 reference archives. Raw and normalized source artifacts are in private S3 reference prefixes with manifests. Attachment does not launch investigations.
 - The production artifact bucket has versioning enabled, noncurrent-version expiry at 90 days, and incomplete multipart upload cleanup at 7 days. Current object versions are retained. Verified from S3 after workflow `38031227320` succeeded.
 - The CloudFormation execution role received `GetLifecycleConfiguration` and `PutLifecycleConfiguration` scoped to `arn:aws:s3:::burnblind-replay-replayartifactbucket-*`. This was required after the first backend deployment rolled back on `PutLifecycleConfiguration` AccessDenied.
