@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
 import { getInvestigations } from '../api.js';
 import { PageHeading, StateMessage } from './shared.jsx';
 
@@ -54,7 +53,6 @@ export function InvestigationsPage() {
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
   const [filter, setFilter] = useState('ALL');
-  const [expandedReports, setExpandedReports] = useState(() => new Set());
 
   useEffect(() => {
     const controller = new AbortController();
@@ -108,45 +106,25 @@ export function InvestigationsPage() {
       </nav>
       <section className="investigation-list" aria-label="Investigation reports">
       {visibleItems.map((item) => {
-        const expanded = expandedReports.has(item.event_id);
         const reviewed = Boolean(item.latest_review);
-        const recommendations = item.investigation?.recommendations || (item.investigation?.recommended_action ? [item.investigation.recommended_action] : []);
+        const place = item.event?.location_name || item.event?.region || 'Candidate event';
+        const summary = item.investigation?.summary;
+        const statusLabel = reviewed ? 'Reviewed' : item.status === 'FAILED' ? 'Failed' : item.status === 'COMPLETED' ? 'Requires review' : item.status?.replaceAll('_', ' ') || 'Pending';
         return <article className="investigation-card panel" key={item.event_id}>
-        <header><div><p className="eyebrow">{reviewed ? 'HUMAN REVIEW SAVED' : item.investigation?.classification?.replaceAll('_', ' ') || item.status?.replaceAll('_', ' ')}</p><h2>{reviewed ? item.latest_review.outcome.replaceAll('_', ' ') : 'Evidence review for this candidate'}</h2></div><span className={`investigation-status status-${reviewed ? 'completed' : item.status?.toLowerCase()}`}>{reviewed ? 'REVIEWED' : item.status?.replaceAll('_', ' ')}</span></header>
-        <p className="investigation-event-reference">Event reference <code>{item.event_id}</code></p>
-        {item.investigation?.summary && <p className="investigation-card-summary">{item.investigation.summary}</p>}
-        {item.investigation && <>
-          <p className="investigation-card-meta">{item.investigation.evidence?.length || 0} cited records · {item.investigation.uncertainties?.length || 0} uncertainties · {item.investigation.missing_evidence?.length || 0} evidence gaps</p>
-          {recommendations.length > 0 && <p className="investigation-recommendation-summary"><span>Recommended next step</span>{recommendations.map((action) => action.replaceAll('_', ' ')).join(' · ')}</p>}
-        </>}
-        {item.error_code && <p className="report-error">Review failed · {item.error_code}</p>}
-        {item.investigation && <>
-          <div className="investigation-card-actions">
-            <button className="secondary-button report-toggle" type="button" aria-expanded={expanded} onClick={() => setExpandedReports((current) => { const next = new Set(current); if (next.has(item.event_id)) next.delete(item.event_id); else next.add(item.event_id); return next; })}>{expanded ? <>Hide report <ChevronUp aria-hidden="true" /></> : <>View full report <ChevronDown aria-hidden="true" /></>}</button>
-            <a className="action-button" href={`#investigations/${item.event_id}`}>{reviewed ? 'View saved review' : 'Review this candidate'}</a>
+        <div className="investigation-card-main">
+          <div className="investigation-card-copy">
+            <div className="investigation-card-titleline"><h2>{place}</h2><span className={`investigation-status status-${reviewed ? 'completed' : item.status?.toLowerCase()}`}>{statusLabel}</span></div>
+            <p className="investigation-card-context">{summary || (item.status === 'FAILED' ? `Investigation failed${item.error_code ? ` · ${item.error_code}` : ''}. Open the record to retry or review the available evidence.` : 'Investigation report is not available yet.')}</p>
+            <p className="investigation-card-meta">{item.event?.detected_at_utc ? `Observed ${formatDate(item.event.detected_at_utc)}` : `Requested ${formatDate(item.requested_at_utc)}`}{item.investigation ? ` · ${item.investigation.evidence?.length || 0} cited evidence records` : ''}{reviewed ? ` · Outcome: ${item.latest_review.outcome.replaceAll('_', ' ')}` : ''}</p>
           </div>
-          {expanded && <InvestigationReportDetails report={item.investigation} />}
-        </>}
-        {!item.investigation && <div className="investigation-card-actions"><a className="action-button" href={`#investigations/${item.event_id}`}>{item.status === 'FAILED' ? 'Open event and retry' : 'Open dedicated review'}</a></div>}
-        <footer><span>Requested {formatDate(item.requested_at_utc)}</span>{item.completed_at_utc && <span>Completed {formatDate(item.completed_at_utc)}</span>}{reviewed && <span>Outcome saved {formatDate(item.latest_review.reviewed_at_utc)}</span>}<span>{item.model_id || 'Model metadata unavailable'}</span></footer>
+          <a className="action-button investigation-card-review" href={`#investigations/${item.event_id}`}>{reviewed ? 'View review' : item.status === 'FAILED' ? 'Open and retry' : 'Review candidate'}</a>
+        </div>
       </article>;
       })}
       {visibleItems.length === 0 && <StateMessage title="No candidates in this category">Choose another review category to see its reports.</StateMessage>}
       {nextCursor && <button className="action-button investigation-load-more" disabled={loadingMore} onClick={loadMore}>{loadingMore ? 'Loading…' : 'Load more investigations'}</button>}
     </section></>}
   </>;
-}
-
-function InvestigationReportDetails({ report }) {
-  const recommendations = report.recommendations || (report.recommended_action ? [report.recommended_action] : []);
-  return <div className="investigation-full-report">
-    <section><h3>Summary</h3><p>{report.summary || 'Summary unavailable.'}</p></section>
-    {report.evidence?.length > 0 && <section><h3>Evidence and provenance</h3><ul>{report.evidence.map((item, index) => <li key={item.evidence_id || index}><span>{[item.evidence_type, item.source].filter(Boolean).join(' · ') || 'Source unavailable'}</span><p>{item.summary || item.interpretation || 'Finding unavailable.'}</p><code>{item.evidence_id || 'Evidence reference unavailable'}</code></li>)}</ul></section>}
-    {report.contradictions?.length > 0 && <section><h3>Contradictions</h3><ul>{report.contradictions.map((item, index) => <li key={item.explanation || item || index}><p>{typeof item === 'string' ? item : item.explanation}</p>{typeof item === 'object' && item.evidence_ids?.length > 0 && <code>{item.evidence_ids.join(' · ')}</code>}</li>)}</ul></section>}
-    {report.missing_evidence?.length > 0 && <section><h3>Evidence unavailable</h3><ul>{report.missing_evidence.map((item) => <li key={item}><p>{item}</p></li>)}</ul></section>}
-    {report.uncertainties?.length > 0 && <section><h3>Uncertainty</h3><ul>{report.uncertainties.map((item) => <li key={item}><p>{item}</p></li>)}</ul></section>}
-    {recommendations.length > 0 && <section className="investigation-next-step"><h3>Recommended human review</h3><p>{recommendations.map((item) => item.replaceAll('_', ' ')).join(' · ')}</p></section>}
-  </div>;
 }
 
 function formatDate(value) {

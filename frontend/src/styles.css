@@ -298,21 +298,6 @@ body{min-width:320px;font-size:var(--type-body)}
 .source-type,.source-limit strong{font-size:11px}.source-card{padding:20px}.source-card h2{font-size:17px;font-weight:550}.source-card>p,.source-limit p{font-size:14px;line-height:1.65}
 .method-detail{padding:20px}.method-detail h2{font-size:18px;font-weight:550}.method-detail>p:not(.eyebrow),.method-detail ul{font-size:14px;line-height:1.7}.method-detail code{font-size:12px}
 .terms-panel dt{font-size:14px}.terms-panel dd{font-size:14px;line-height:1.65}
-.investigation-card{padding:19px}.investigation-card h2{font-size:16px;font-weight:550;line-height:1.45}.investigation-card-summary{font-size:15px;line-height:1.65}.investigation-card-meta{font-size:13px;line-height:1.55}.investigation-card>footer{font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace}
-.investigation-recommendation-summary{margin:10px 0 0;padding:10px 12px;border-left:2px solid var(--amber);background:#1b1915;color:#e7c58e;font-size:13px;line-height:1.55}
-.investigation-recommendation-summary span{display:block;margin-bottom:3px;color:#aaa79d;font-size:11px}
-.investigation-event-reference{margin:8px 0 0;color:#a4a69a;font-size:12px}.investigation-event-reference code{color:#d5bd91;font-size:12px}
-.investigation-card-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:14px}
-.investigation-card-actions .secondary-button,.investigation-card-actions .action-button{min-height:42px;font-size:13px}
-.report-toggle svg{width:16px;height:16px}.investigation-full-report{margin-top:16px;padding-top:15px;border-top:1px solid #30332c;display:grid;gap:17px}
-.investigation-full-report section{min-width:0}.investigation-full-report h3{margin:0 0 7px;color:#e8e5dd;font-size:15px;font-weight:550}
-.investigation-full-report p{margin:0;color:#c5c4ba;font-size:14px;line-height:1.65;overflow-wrap:anywhere}
-.investigation-full-report ul{margin:0;padding:0;display:grid;gap:10px;list-style:none}
-.investigation-full-report li{padding:10px 12px;border-left:2px solid #5a4a34;background:#151715;overflow-wrap:anywhere}
-.investigation-full-report li>span{display:block;margin-bottom:5px;color:#d6b477;font-size:12px}
-.investigation-full-report li>code{display:inline-block;margin-top:7px;color:#aeb0a4;font-size:11px;overflow-wrap:anywhere}
-.investigation-full-report .investigation-next-step{padding:12px 14px;border-left:2px solid var(--amber);background:#201d17}
-.investigation-next-step p{color:#e8c58e;font-weight:550}
 .site-footer{font-size:11px;line-height:1.55}
 .replay-step{min-width:42px;min-height:42px;display:grid;place-items:center}.replay-step svg{width:18px;height:18px}
 .replay-counter,.replay-speed,.replay-range{font-size:13px}
@@ -379,18 +364,19 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 .terms-accordion details p{max-width:720px;margin:0;padding:0 30px 16px 0;color:#a5a8a8;font-size:11px;line-height:1.75}
 @media(prefers-reduced-motion:reduce){.detail-tabs [role="tab"],.terms-accordion summary::after{transition:none}}
 .investigation-list{display:grid;gap:10px}
-.investigation-card{padding:15px 17px}
-.investigation-card>header{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.investigation-card .eyebrow{margin-bottom:5px}
-.investigation-card h2{margin:0;font-size:14px;font-weight:570}
-.investigation-card-summary{max-width:900px;margin:12px 0;color:#c8c8bd;font-size:11px;line-height:1.7}
-.investigation-card-meta{margin:0;color:#e0bd83;font-size:9px}
-.investigation-card>footer{margin-top:13px;padding-top:10px;display:flex;flex-wrap:wrap;gap:8px 18px;border-top:1px solid #30322b;color:#85877c;font:8px ui-monospace,SFMono-Regular,Consolas,monospace}
+.investigation-card{padding:12px 14px}
+.investigation-card-main{display:flex;align-items:center;justify-content:space-between;gap:18px}
+.investigation-card-copy{min-width:0;flex:1}
+.investigation-card-titleline{display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+.investigation-card h2{margin:0;color:var(--text);font-size:15px;font-weight:560;line-height:1.35}
+.investigation-card .investigation-status{padding:3px 7px;font-size:10px}
+.investigation-card-context{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;max-width:1000px;margin:5px 0 0;color:#c1c2b8;font-size:13px;line-height:1.45}
+.investigation-card-meta{margin:5px 0 0;color:#929489;font-size:11px;line-height:1.4}
 .investigation-load-more{justify-self:start}
 .investigation-filters{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px;padding:10px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .investigation-filters .filter-button{min-height:40px;padding:7px 11px;display:inline-flex;align-items:center;gap:9px;font-size:13px}
 .investigation-filters .filter-button span{min-width:22px;padding:2px 5px;border:1px solid #41433b;color:#c5c1b6;text-align:center;font-size:11px}
-.investigation-card-actions .action-button{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.investigation-card-review{min-height:38px;padding:7px 11px;display:inline-flex;flex:none;align-items:center;justify-content:center;text-decoration:none;font-size:12px}
 .latest-review{margin:14px 0;padding:13px 15px;border-left:2px solid var(--green);background:#171d18;color:#c7c9bf;font-size:14px;line-height:1.6}
 .latest-review p{margin:0}
 .latest-review strong{color:#d8e4ce}
@@ -399,15 +385,33 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 .latest-review .secondary-button{margin-top:10px;min-height:38px}
 .detail-section{margin-top:0}
 .monitoring-selection{scroll-margin-top:18px;margin-top:22px}
-@media(max-width:700px){.investigation-filters{overflow-x:auto;flex-wrap:nowrap}.investigation-filters .filter-button{flex:none}.investigation-card-actions>a.action-button{width:100%}}
+@media(max-width:700px){.investigation-filters{overflow-x:auto;flex-wrap:nowrap}.investigation-filters .filter-button{flex:none}.investigation-card-main{align-items:flex-start;flex-direction:column;gap:10px}.investigation-card-review{width:100%}}
 
 /* Monitoring selection panel: lead with the candidate and surface evidence state plainly. */
-.candidate-heading{min-height:118px;padding:22px 24px;background:linear-gradient(105deg,#191b17 0%,#171916 62%,#201a14 100%)}
+.candidate-heading{min-height:104px;padding:17px 20px;background:linear-gradient(105deg,#191b17 0%,#171916 62%,#201a14 100%)}
 .candidate-heading .eyebrow{margin-bottom:6px;color:#b6a486}
 .candidate-heading h2{font-size:22px;font-weight:560;letter-spacing:-.025em}
+.candidate-observed{color:#a7a99e;font-size:12px}
 .candidate-heading-actions{display:flex;align-items:center;gap:14px}
 .candidate-state{display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid #55422f;color:#d3bc99;font-size:12px}
 .candidate-state i{width:7px;height:7px;border-radius:50%;background:var(--amber)}
+.candidate-state.is-reviewed{border-color:#465640;color:#cad8bd}
+.candidate-state.is-reviewed i{background:var(--green)}
+.candidate-heading+.detail-tabs{margin-bottom:10px}
+.investigation-report{margin-right:13px;margin-left:13px}
+.human-review{margin:14px 0 3px;padding:15px 16px;border:1px solid #393b33;background:#171916}
+.human-review-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:10px}
+.human-review-heading h4{margin:0;color:var(--text);font-size:16px;font-weight:560}
+.human-review-heading>div>p:last-child{margin:5px 0 0;color:#a3a59a;font-size:13px;line-height:1.45}
+.human-review-heading>span{color:#a9a99e;font-size:11px;line-height:1.45;text-align:right}
+.human-review form{display:grid;grid-template-columns:minmax(200px,.7fr) minmax(260px,1.5fr) auto;align-items:end;gap:10px}
+.human-review form label{display:grid;gap:5px;color:#c4c4ba;font-size:12px;font-weight:520}
+.human-review form label span{color:#929489;font-weight:400}
+.human-review select,.human-review textarea{width:100%;min-height:40px;padding:8px 10px;border:1px solid #41433b;border-radius:3px;background:#111310;color:var(--text);font:inherit;font-size:13px}
+.human-review textarea{min-height:40px;resize:vertical}
+.human-review .review-submit{min-height:40px;white-space:nowrap}
+.latest-review{margin:10px 0 0;padding:10px 12px;font-size:13px}
+@media(max-width:760px){.human-review form{grid-template-columns:1fr}.human-review .review-submit{width:100%}.human-review-heading{flex-direction:column}.human-review-heading>span{text-align:left}}
 .candidate-location{display:flex;align-items:center;gap:7px;margin:9px 0 0;color:#f0c18b;font-size:17px;font-weight:520;letter-spacing:-.01em}
 .candidate-location svg{width:16px;height:16px;color:#e28b4e}
 .candidate-location span{color:#76786e}
