@@ -7,12 +7,33 @@ import pytest
 from pydantic import ValidationError
 
 from backend.agent.report import EvidenceContradiction, EvidenceFinding, InvestigationReport
+from backend.agent.evidence import DynamoEvidenceRepository
 from backend.agent.runtime import investigate_event
 from backend.api.repository import MemoryCandidateEventRepository
 from backend.common.models import CandidateEvent
 
 
 EVENT_ID = "evt_000000000000000000000001"
+
+
+def test_latest_derived_evidence_queries_newest_matching_record_across_pages():
+    class Table:
+        def __init__(self):
+            self.calls = []
+
+        def query(self, **kwargs):
+            self.calls.append(kwargs)
+            if len(self.calls) == 1:
+                return {"Items": [], "LastEvaluatedKey": {"observation_id": "older-page"}}
+            return {"Items": [{"record": {"status": "AGREEMENT", "comparison_source": "VIIRS_SNPP"}}]}
+
+    table = Table()
+    result = DynamoEvidenceRepository("unused", table).get_latest_derived(EVENT_ID, "SENSOR_COMPARISON")
+
+    assert result["comparison_source"] == "VIIRS_SNPP"
+    assert len(table.calls) == 2
+    assert table.calls[0]["ScanIndexForward"] is False
+    assert "FilterExpression" in table.calls[0]
 
 
 def _event(event_id=EVENT_ID):
