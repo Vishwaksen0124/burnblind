@@ -70,6 +70,29 @@ def test_dynamo_repository_uses_index_and_cursor_without_duplicate_pages():
     assert table.query_calls[0]["IndexName"] == "data-mode-detected-at"
 
 
+def test_dynamo_repository_batch_loads_investigation_event_summaries():
+    events = [make_event(f"evt_{index:024x}", index + 1) for index in range(2)]
+
+    class BatchClient:
+        def __init__(self):
+            self.calls = []
+
+        def batch_get_item(self, **kwargs):
+            self.calls.append(kwargs)
+            ids = {key["event_id"] for key in kwargs["RequestItems"]["Events"]["Keys"]}
+            return {"Responses": {"Events": [item for _, item in events if item["event_id"] in ids]}}
+
+    client = BatchClient()
+    table = SimpleNamespace(name="Events", meta=SimpleNamespace(client=client))
+    repository = DynamoCandidateEventRepository("Events", table=table)
+
+    result = repository.get_many([events[0][0].event_id, "evt_ffffffffffffffffffffffff"])
+
+    assert list(result) == [events[0][0].event_id]
+    assert result[events[0][0].event_id].latitude == events[0][0].latitude
+    assert len(client.calls) == 1
+
+
 def test_dynamo_repository_applies_timestamp_and_bbox_filters():
     events = [make_event("evt_000000000000000000000001", 1, latitude=30.9), make_event("evt_000000000000000000000002", 2, latitude=27.5)]
     table = FakeTable([item for _, item in events])

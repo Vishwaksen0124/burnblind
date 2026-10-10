@@ -28,6 +28,8 @@ class InvalidCursor(ValueError):
 class CandidateEventRepository(Protocol):
     def get(self, event_id: str) -> CandidateEvent | None: ...
 
+    def get_many(self, event_ids: list[str]) -> dict[str, CandidateEvent]: ...
+
     def list(
         self,
         filters: EventFilters,
@@ -44,6 +46,9 @@ class MemoryCandidateEventRepository:
 
     def get(self, event_id: str) -> CandidateEvent | None:
         return self._events.get(event_id)
+
+    def get_many(self, event_ids: list[str]) -> dict[str, CandidateEvent]:
+        return {event_id: self._events[event_id] for event_id in event_ids if event_id in self._events}
 
     def list(
         self,

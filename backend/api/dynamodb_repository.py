@@ -30,6 +30,34 @@ class DynamoCandidateEventRepository:
         item = result.get("Item")
         return _to_event(item) if item else None
 
+    def get_many(self, event_ids: list[str]) -> dict[str, CandidateEvent]:
+        """Batch-load event summaries for investigation rows, without N+1 reads."""
+        if not event_ids:
+            return {}
+        table_name = self._table.name
+        client = self._table.meta.client
+        events: dict[str, CandidateEvent] = {}
+        for offset in range(0, len(event_ids), 100):
+            pending = {table_name: {
+                "Keys": [{"event_id": event_id} for event_id in event_ids[offset:offset + 100]],
+                "ConsistentRead": True,
+            }}
+            for attempt in range(5):
+                if not pending:
+                    break
+                response = client.batch_get_item(RequestItems=pending)
+                for item in response.get("Responses", {}).get(table_name, []):
+                    event = _to_event(item)
+                    events[event.event_id] = event
+                pending = response.get("UnprocessedKeys", {})
+                if pending and attempt < 4:
+                    import time
+
+                    time.sleep(0.05 * (2 ** attempt))
+            if pending:
+                raise RuntimeError("DynamoDB returned unprocessed event summary keys")
+        return events
+
     def get_scoring_context(self, event_id: str) -> dict[str, Any] | None:
         item = self._table.get_item(Key={"event_id": event_id}, ConsistentRead=True).get("Item")
         if not item or not item.get("score_version"):

@@ -110,13 +110,13 @@ export function InvestigationsPage() {
       </div>
       {visibleItems.map((item) => {
         const reviewed = Boolean(item.latest_review);
-        const place = item.event?.location_name || item.event?.region || 'Candidate event';
+        const place = item.event?.location_name || item.event?.region || formatCoordinates(item.event) || 'Candidate event';
         const summary = item.investigation?.summary;
         const statusLabel = reviewed ? 'Reviewed' : item.status === 'FAILED' ? 'Failed' : item.status === 'COMPLETED' ? 'Requires review' : item.status?.replaceAll('_', ' ') || 'Pending';
         return <article className="investigation-row" key={item.event_id}>
           <div className="investigation-candidate-cell">
             <span className="investigation-row-marker" aria-hidden="true" />
-            <div><h2>{place}</h2><p>{item.event?.detected_at_utc ? formatDate(item.event.detected_at_utc) : `Requested ${formatDate(item.requested_at_utc)}`}</p></div>
+            <div><h2>{place}</h2><p>{item.event?.detected_at_utc ? `Observed ${formatDate(item.event.detected_at_utc)}` : `Requested ${formatDate(item.requested_at_utc)}`}</p></div>
           </div>
           <p className="investigation-summary-cell">{summary || (item.status === 'FAILED' ? `Investigation failed${item.error_code ? ` · ${item.error_code}` : ''}. Open to inspect or retry.` : 'Investigation report is not available yet.')}</p>
           <div className="investigation-state-cell"><span className={`investigation-status status-${reviewed ? 'completed' : item.status?.toLowerCase()}`}>{statusLabel}</span>{reviewed && <small>{item.latest_review.outcome.replaceAll('_', ' ')}</small>}</div>
@@ -133,4 +133,11 @@ function formatDate(value) {
   if (!value) return 'time unavailable';
   const date = new Date(value);
   return Number.isNaN(date.valueOf()) ? 'time unavailable' : date.toLocaleString();
+}
+
+function formatCoordinates(event) {
+  if (!Number.isFinite(event?.latitude) || !Number.isFinite(event?.longitude)) return null;
+  const latitude = `${Math.abs(event.latitude).toFixed(2)}°${event.latitude < 0 ? 'S' : 'N'}`;
+  const longitude = `${Math.abs(event.longitude).toFixed(2)}°${event.longitude < 0 ? 'W' : 'E'}`;
+  return `${latitude}, ${longitude}`;
 }
