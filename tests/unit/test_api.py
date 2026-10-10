@@ -255,6 +255,39 @@ def test_map_layers_fall_back_to_source_evidence_when_event_batch_context_is_emp
     assert exposure.body["items"][0]["value"]["status"] == "ESTIMATED"
 
 
+def test_map_layers_fall_back_when_event_context_contains_unavailable_placeholder():
+    class ContextRepository:
+        def __getattr__(self, name):
+            return getattr(repository(), name)
+
+        def get_feature_contexts(self, event_ids):
+            return {
+                event_id: {
+                    "sensor_comparison": {"status": "UNAVAILABLE", "evidence_ids": []},
+                    "exposure": {"status": "UNAVAILABLE", "estimated_population": None},
+                }
+                for event_id in event_ids
+            }
+
+    class Evidence:
+        def get_latest_derived(self, event_id, evidence_type):
+            if event_id != "evt_000000000000000000000001":
+                return None
+            if evidence_type == "SENSOR_COMPARISON":
+                return {"status": "AGREEMENT", "evidence_ids": ["gk2a-1", "firms-1"]}
+            if evidence_type == "POPULATION_EXPOSURE_ESTIMATE":
+                return {"status": "OK", "estimated_population": 12400, "source": "WORLDPOP"}
+            return None
+
+    response = handle_request(
+        "GET", "/map-layers", {"layer": "sensor-disagreement", "limit": "3"},
+        ContextRepository(), evidence_reader=Evidence(),
+    )
+
+    assert response.body["status"] == "AVAILABLE"
+    assert response.body["items"][0]["value"]["status"] == "AGREEMENT"
+
+
 def test_event_feature_routes_explicitly_report_unavailable_data():
     event_id = "evt_000000000000000000000001"
     response = handle_request("GET", f"/events/{event_id}/exposure", {}, repository())

@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
-from backend.common.models import FireObservation
+from backend.common.models import CandidateEvent, FireObservation
+from backend.processing.evidence_comparison import compare_attached_evidence
 from backend.processing.comparison import compare_sensor_observations
 
 
@@ -67,3 +68,47 @@ def test_nonmatching_observations_are_inconclusive_not_negative():
     )
 
     assert result["status"] == "INCONCLUSIVE"
+
+
+def test_positive_detection_coverage_artifact_cannot_override_canonical_sensor_name():
+    event = CandidateEvent(
+        event_id="evt_0123456789abcdef01234567",
+        grid_id="grid-v1-cell",
+        detected_at_utc=TIME,
+        last_observed_at_utc=TIME,
+        latitude=30.9,
+        longitude=75.8,
+        detection_count=1,
+        sources=("GK2A_AMI",),
+        evidence_ids=("gk2-1",),
+        data_mode="HISTORICAL_REPLAY",
+        processing_version="fixture-v1",
+    )
+    rows = [
+        {
+            "observation_id": "gk2-1", "event_id": event.event_id,
+            "evidence_type": "SATELLITE_DETECTION", "source": "GK2A_AMI",
+            "observed_at_utc": TIME.isoformat().replace("+00:00", "Z"),
+            "latitude": 30.9, "longitude": 75.8,
+        },
+        {
+            "observation_id": "firms-1", "event_id": event.event_id,
+            "evidence_type": "SENSOR_OBSERVATION", "source": "VIIRS_NOAA20",
+            "observed_at_utc": TIME.isoformat().replace("+00:00", "Z"),
+            "latitude": 30.9, "longitude": 75.8,
+        },
+        {
+            "observation_id": "legacy-coverage", "event_id": event.event_id,
+            "evidence_type": "SENSOR_COVERAGE", "source": "N20",
+            "record": {
+                "evidence_id": "legacy-coverage", "source": "N20",
+                "quality_valid": True, "detection_present": True,
+                "coverage_radius_km": 5,
+            },
+        },
+    ]
+
+    result = compare_attached_evidence(event, rows)
+
+    assert result["status"] == "AGREEMENT"
+    assert result["comparison_source"] == "VIIRS_NOAA20"

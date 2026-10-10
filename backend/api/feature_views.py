@@ -59,13 +59,19 @@ def map_layer(repository: Any, layer: str, limit: int, evidence_reader: Any | No
             else context_reader(event.event_id) if context_reader else None
         )
         value = (context or {}).get(field)
-        # Event feature contexts are batch-loaded when supported, but source
-        # evidence may be persisted independently in the evidence table. Fall
-        # back per event only when the event projection has no value.
-        if evidence_reader and not value and layer == "sensor-disagreement":
-            value = evidence_reader.get_latest_derived(event.event_id, "SENSOR_COMPARISON")
-        elif evidence_reader and not value and layer == "exposure":
-            value = evidence_reader.get_latest_derived(event.event_id, "POPULATION_EXPOSURE_ESTIMATE")
+        # Event projections can contain stale UNAVAILABLE placeholders while
+        # source-derived evidence is stored independently in the evidence table.
+        # Prefer the projection only when it contains a usable feature.
+        if layer == "sensor-disagreement":
+            usable = isinstance(value, dict) and value.get("status") in {
+                "AGREEMENT", "DISAGREEMENT", "INCONCLUSIVE",
+            }
+            if evidence_reader and not usable:
+                value = evidence_reader.get_latest_derived(event.event_id, "SENSOR_COMPARISON")
+        elif layer == "exposure":
+            usable = isinstance(value, dict) and value.get("status") in {"OK", "ESTIMATED"}
+            if evidence_reader and not usable:
+                value = evidence_reader.get_latest_derived(event.event_id, "POPULATION_EXPOSURE_ESTIMATE")
         if not value and layer == "sensor-disagreement":
             value = (context or {}).get("sensor_comparison")
         elif not value and layer == "exposure":

@@ -15,9 +15,19 @@ NON_SENSOR_TYPES = {"WEATHER_ESTIMATE", "POPULATION_EXPOSURE_ESTIMATE", "SENSOR_
 def compare_attached_evidence(event: Any, rows: list[dict[str, Any]]) -> dict[str, Any]:
     satellite = [row for row in rows if row.get("evidence_type") not in NON_SENSOR_TYPES and row.get("source")]
     coverage = [row for row in rows if row.get("evidence_type") == "SENSOR_COVERAGE"]
+    # A positive detection is an observation, not proof of a sensor coverage
+    # footprint. Only explicit quality-valid *negative* coverage records may
+    # introduce a comparison source without a matching observation.
+    negative_coverage = [
+        row for row in coverage
+        if (row.get("record") or {}).get("quality_valid") is True
+        and (row.get("record") or {}).get("detection_present") is False
+        and (row.get("record") or {}).get("evidence_id")
+        and ((row.get("record") or {}).get("source") or row.get("source"))
+    ]
     sources = sorted({str(row["source"]) for row in satellite} | {
         str((row.get("record") or {}).get("source") or row.get("source"))
-        for row in coverage if (row.get("record") or {}).get("source") or row.get("source")
+        for row in negative_coverage
     })
     if len(sources) < 2:
         return {
@@ -45,7 +55,7 @@ def compare_attached_evidence(event: Any, rows: list[dict[str, Any]]) -> dict[st
         return {"status": "INDEPENDENT_OBSERVATION_UNAVAILABLE", "sources": sources, "evidence_ids": []}
     result = compare_sensor_observations(
         observations, primary, independent_sources[0],
-        coverage_records=[row.get("record", {}) for row in coverage],
+        coverage_records=[row.get("record", {}) for row in negative_coverage],
     )
     result["evidence_ids"] = sorted({identifier for match in result.get("matches", [])
                                     for identifier in (match.get("primary_evidence_id"), match.get("comparison_evidence_id"))
