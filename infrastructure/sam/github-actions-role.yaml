@@ -228,6 +228,12 @@ Resources:
                   - s3:PutBucketTagging
                   - s3:GetBucketTagging
                 Resource: '*'
+              - Sid: ManageBurnBlindArtifactBucketLifecycle
+                Effect: Allow
+                Action:
+                  - s3:GetLifecycleConfiguration
+                  - s3:PutLifecycleConfiguration
+                Resource: !Sub 'arn:${AWS::Partition}:s3:::${BackendStackName}-replayartifactbucket-*'
               - Sid: ManageBurnBlindReviewerUserPool
                 Effect: Allow
                 Action:
