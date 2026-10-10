@@ -1,6 +1,6 @@
 # BurnBlind — Master Checklist
 
-## Current implementation status (2026-10-09, post-deployment smoke)
+## Current implementation status (2026-10-10, post-deployment verification)
 
 The application foundation and feature code are substantially implemented, but
 the end-to-end release is **not complete**. A checked implementation item does
@@ -9,11 +9,17 @@ not imply that its live data source or deployed AWS path has been verified.
 | Area | Implemented | Still required for release |
 | --- | --- | --- |
 | Frontend | Landing, monitoring, event detail, investigation, replay, and methodology views; responsive map-first UI; Amplify CI deployment returned HTTP 200 | Browser interaction and visual review at desktop/mobile widths |
-| Feature upgrade | Scoring, comparison, exposure, replay, human outcome, event-scoped agent paths exist in code | Attach complete historical/coverage/score evidence to replay; live-source validation |
+| Feature upgrade | Scoring, comparison, exposure, replay, human outcome, event-scoped agent paths exist; four independent FIRMS comparisons and 250 sourced exposure estimates are visible in production | Attach complete historical/coverage/score evidence to replay; validate more live-source cases |
 | Agent | Strands integration, event-scoped evidence packet/report, DeepSeek V3.2 Mantle; cross-sensor status handling and retry race regressions covered by unit tests | Broader model scenario evaluation and live integration coverage |
 | AWS | Amplify and backend OIDC workflows passed; SAM stack deployed; health, summary, event, action-center, investigation, map-layer and CORS smoke checks passed; one queue-to-report flow verified; Cognito JWT protects both API path forms and anonymous mutation probes return 401 | Invited-reviewer write test, security/cost review and ongoing operational verification |
 | Data | GK2A replay sample is present; weather and WorldPop adapters are implemented | FIRMS key/reference data, licensing review, live source checks, full artifact lifecycle |
-| Quality | 93 tests, production frontend build, SAM validation, deployed API/CORS/auth smoke checks | Browser e2e, source-to-storage integration, security and cost review |
+| Quality | 110 tests, production frontend build, SAM validation, deployed API/CORS/auth smoke checks, production sensor map shows four sourced comparisons | Browser e2e, authenticated reviewer write, source-to-storage integration, security and cost review |
+
+The production S3 artifact bucket uses versioning and expires noncurrent versions
+after 90 days; incomplete multipart uploads expire after 7 days. Current object
+versions are retained. This policy was deployed through Backend CI/CD after
+scoping the CloudFormation execution role's lifecycle permissions to the
+BurnBlind artifact-bucket ARN pattern.
 
 The backend and model path were verified on 2026-10-09. Reviewer JWT
 authentication is deployed in API Gateway, the Lambda handler, and frontend.
@@ -38,7 +44,7 @@ still needed to complete the authenticated sign-in and outcome-write check.
 ## Data
 
 - [ ] GK2A historical dataset acquired
-- [ ] FIRMS historical reference acquired
+- [x] FIRMS historical reference acquired for Oct–Nov 2025; six matched observations attached to four events
 - [ ] GK2A AWS Open Data access tested
 - [x] Weather source selected
 - [x] Population source selected
@@ -135,7 +141,7 @@ still needed to complete the authenticated sign-in and outcome-write check.
 - [x] 250-record real development sample with provenance manifest
 - [x] FIRMS parser and key-safe archive downloader implemented
 - [x] Open-Meteo ERA5 wind adapter and directional screening corridor
-- [ ] FIRMS MAP_KEY configured and historical reference files acquired
+- [x] FIRMS MAP_KEY stored in AWS Secrets Manager; historical reference files acquired and source-matched records attached
 - [x] Deterministic scoring component and explicit versioned trigger config; feature derivation is implemented but replay seed rows lack complete score inputs
 - [x] Replay event generation and stable IDs
 - [x] Read-only API with validated filters, pagination, and gated investigation route
@@ -146,9 +152,9 @@ still needed to complete the authenticated sign-in and outcome-write check.
 - [x] Public dashboard deployed with Amplify; browser-origin CORS verified
 - [x] Source-backed feature derivation, on-demand population exposure client, and event-scoped investigation packet implemented; live-source and model verification remain
 
-## Local verification and remaining release gates (2026-10-09)
+## Local verification and remaining release gates (2026-10-10)
 
-- [x] pytest -q: 93 passed (2026-10-09)
+- [x] pytest -q: 110 passed (2026-10-10)
 - [x] npm run build: Vite production build passed
 - [x] sam validate --lint --template-file infrastructure/sam/template.yaml
 - [x] sam build --template-file infrastructure/sam/template.yaml
@@ -159,6 +165,9 @@ still needed to complete the authenticated sign-in and outcome-write check.
 - [x] CI/CD role expanded with a repository/branch-scoped SAM deployment role and runtime permissions boundary
 - [ ] NASA FIRMS MAP_KEY stored in AWS Secrets Manager and historical comparison records acquired
 - [x] One live DeepSeek V3.2 investigation completed after AWS role setup; report persisted and returned by the investigations API
+- [x] Production sensor-comparison map displays four independently sourced matching observation comparisons
+- [x] Production exposure map displays source-derived estimates; no agent investigation is triggered by environmental attachment
+- [x] S3 artifact versioning and approved 90-day noncurrent lifecycle policy deployed and verified
 - [ ] Historical context and observation-coverage records attached to replay events before publishing score or blindness layers
 
 **Release note:** frontend and backend use separate GitHub OIDC roles scoped to this repository's `main` branch. The backend deploy role can update only `burnblind-replay` and pass the dedicated CloudFormation execution role. Lambda roles receive the `BurnBlindRuntimeBoundary` permissions boundary. Backend deployment and one event-scoped model run passed on 2026-10-09. No FIRMS key was found in Secrets Manager or GitHub secrets; provide only its Secrets Manager ARN/name, never the key value in chat.
