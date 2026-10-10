@@ -22,7 +22,11 @@ def settings() -> dict[str, str]:
 
 
 def test_preflight_accepts_bundle_with_deployment_configuration(build_dir: Path) -> None:
-    (build_dir / "assets" / "app.js").write_text(" ".join(settings().values()))
+    values = settings()
+    # Vite can fold this ID away because the frontend uses it only as a
+    # boolean switch for reviewer authentication.
+    values.pop("VITE_COGNITO_USER_POOL_ID")
+    (build_dir / "assets" / "app.js").write_text(" ".join(values.values()))
 
     validate_frontend_configuration(build_dir, settings())
 
