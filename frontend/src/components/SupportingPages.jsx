@@ -105,21 +105,23 @@ export function InvestigationsPage() {
         }).length}</span></button>)}
       </nav>
       <section className="investigation-list" aria-label="Investigation reports">
+      <div className="investigation-table-head" role="row">
+        <span>Candidate</span><span>Investigation summary</span><span>Review state</span><span aria-label="Actions" />
+      </div>
       {visibleItems.map((item) => {
         const reviewed = Boolean(item.latest_review);
         const place = item.event?.location_name || item.event?.region || 'Candidate event';
         const summary = item.investigation?.summary;
         const statusLabel = reviewed ? 'Reviewed' : item.status === 'FAILED' ? 'Failed' : item.status === 'COMPLETED' ? 'Requires review' : item.status?.replaceAll('_', ' ') || 'Pending';
-        return <article className="investigation-card panel" key={item.event_id}>
-        <div className="investigation-card-main">
-          <div className="investigation-card-copy">
-            <div className="investigation-card-titleline"><h2>{place}</h2><span className={`investigation-status status-${reviewed ? 'completed' : item.status?.toLowerCase()}`}>{statusLabel}</span></div>
-            <p className="investigation-card-context">{summary || (item.status === 'FAILED' ? `Investigation failed${item.error_code ? ` · ${item.error_code}` : ''}. Open the record to retry or review the available evidence.` : 'Investigation report is not available yet.')}</p>
-            <p className="investigation-card-meta">{item.event?.detected_at_utc ? `Observed ${formatDate(item.event.detected_at_utc)}` : `Requested ${formatDate(item.requested_at_utc)}`}{item.investigation ? ` · ${item.investigation.evidence?.length || 0} cited evidence records` : ''}{reviewed ? ` · Outcome: ${item.latest_review.outcome.replaceAll('_', ' ')}` : ''}</p>
+        return <article className="investigation-row" key={item.event_id}>
+          <div className="investigation-candidate-cell">
+            <span className="investigation-row-marker" aria-hidden="true" />
+            <div><h2>{place}</h2><p>{item.event?.detected_at_utc ? formatDate(item.event.detected_at_utc) : `Requested ${formatDate(item.requested_at_utc)}`}</p></div>
           </div>
-          <a className="action-button investigation-card-review" href={`#investigations/${item.event_id}`}>{reviewed ? 'View review' : item.status === 'FAILED' ? 'Open and retry' : 'Review candidate'}</a>
-        </div>
-      </article>;
+          <p className="investigation-summary-cell">{summary || (item.status === 'FAILED' ? `Investigation failed${item.error_code ? ` · ${item.error_code}` : ''}. Open to inspect or retry.` : 'Investigation report is not available yet.')}</p>
+          <div className="investigation-state-cell"><span className={`investigation-status status-${reviewed ? 'completed' : item.status?.toLowerCase()}`}>{statusLabel}</span>{reviewed && <small>{item.latest_review.outcome.replaceAll('_', ' ')}</small>}</div>
+          <a className="investigation-open" href={`/investigations/${item.event_id}`} aria-label={`${reviewed ? 'View review for' : 'Review'} ${place}`}>{reviewed ? 'View' : item.status === 'FAILED' ? 'Retry' : 'Review'} <span aria-hidden="true">→</span></a>
+        </article>;
       })}
       {visibleItems.length === 0 && <StateMessage title="No candidates in this category">Choose another review category to see its reports.</StateMessage>}
       {nextCursor && <button className="action-button investigation-load-more" disabled={loadingMore} onClick={loadMore}>{loadingMore ? 'Loading…' : 'Load more investigations'}</button>}

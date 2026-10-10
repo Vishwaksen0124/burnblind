@@ -1,0 +1,83 @@
+/* Compact reviewer queue and candidate rows. */
+.investigation-list{display:block;border-top:1px solid var(--line)}
+.investigation-table-head,.investigation-row{display:grid;grid-template-columns:minmax(175px,.85fr) minmax(260px,1.7fr) minmax(130px,.65fr) 82px;align-items:center;column-gap:20px}
+.investigation-table-head{min-height:36px;padding:0 14px;border-bottom:1px solid var(--line);color:#8f9187;font-size:11px;font-weight:520}
+.investigation-row{min-height:70px;padding:9px 14px;border-bottom:1px solid #292d29;background:#151714;transition:background-color .14s ease}
+.investigation-row:hover{background:#1b1d18}
+.investigation-candidate-cell{min-width:0;display:flex;align-items:center;gap:11px}
+.investigation-row-marker{width:7px;height:7px;flex:none;border:1px solid #e7a965;border-radius:50%;background:#b95732}
+.investigation-candidate-cell h2{overflow:hidden;margin:0;color:#eeeae1;font-size:14px;font-weight:540;text-overflow:ellipsis;white-space:nowrap}
+.investigation-candidate-cell p{overflow:hidden;margin:4px 0 0;color:#96988d;font-size:11px;text-overflow:ellipsis;white-space:nowrap}
+.investigation-summary-cell{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin:0;color:#b8bab0;font-size:12px;line-height:1.45}
+.investigation-state-cell{min-width:0;display:grid;justify-items:start;gap:4px}
+.investigation-status{max-width:100%;padding:3px 7px;border:1px solid #47453b;color:#d0c39f;font-size:11px;line-height:1.35;white-space:nowrap}
+.investigation-state-cell small{overflow:hidden;max-width:100%;color:#9b9d92;font-size:11px;text-overflow:ellipsis;white-space:nowrap}
+.investigation-open{min-height:32px;display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid #554430;background:#211d17;color:#e7bf88;font-size:12px;text-decoration:none;white-space:nowrap}
+.investigation-open:hover{border-color:#987348;background:#2a2319;color:#f4d2a0}
+.investigation-filters{gap:16px;margin:0 0 14px;padding:0 0 11px}
+.investigation-filters .filter-button{min-height:32px;padding:4px 0;border:0;border-bottom:2px solid transparent;font-size:13px}
+.investigation-filters .filter-button.active{border-color:var(--amber);background:transparent;color:#f0c18b}
+.investigation-filters .filter-button span{min-width:20px;padding:1px 5px;border:0;background:#292b25;color:#c4c3b9;font-size:11px}
+.event-row{min-height:64px;padding:9px 12px;gap:9px}
+.event-copy{gap:3px}
+.event-copy strong{font-size:12px}
+.event-copy small,.event-meta{font-size:10px}
+.event-meta{line-height:1.3}
+.candidate-mark{margin-top:5px}
+.candidate-heading{min-height:78px;padding:12px 16px}
+.candidate-heading h2{font-size:18px}
+.candidate-location{gap:6px;margin:6px 0 0;font-size:13px}
+.candidate-location svg{width:14px;height:14px}
+.candidate-heading-actions{gap:10px}
+.candidate-state{padding:5px 8px;font-size:11px}
+.detail-tabs{padding:5px 12px}
+.detail-tabs [role=tab]{min-height:34px;padding:0 11px;font-size:12px}
+.detail-tab-panel#event-panel{padding:0 16px 15px}
+.candidate-facts{padding:13px 0 12px}
+.candidate-fact{gap:9px;padding:2px 13px}
+.fact-icon{width:28px;height:28px}
+.fact-icon svg{width:14px;height:14px}
+.candidate-fact .detail-label{font-size:10px}
+.candidate-fact strong{font-size:12px}
+.candidate-fact small{font-size:11px;line-height:1.4}
+.evidence-context-heading{margin:14px 0 9px}
+.evidence-context-heading h3{font-size:15px}
+.evidence-context-heading .eyebrow{font-size:8px}
+.context-action{min-height:33px;padding:0 9px;font-size:11px}
+.environmental-analysis-action{gap:12px;margin:10px 0;padding:10px 12px}
+.environmental-analysis-action .detail-label{font-size:9px}
+.environmental-analysis-action p{font-size:11px}
+.environmental-analysis-action .action-button{min-height:34px;padding:6px 9px;font-size:11px}
+.event-feature-grid{gap:0 14px}
+.event-feature-card{padding:11px 0;border:0;border-top:1px solid #30332c;background:transparent}
+.context-card-heading{min-height:29px;gap:8px}
+.context-card-icon{width:25px;height:25px}
+.context-card-icon svg{width:13px;height:13px}
+.context-card-heading h4{font-size:12px}
+.context-state{padding:3px 5px;font-size:9px}
+.event-feature-card>strong{margin:8px 0 3px;font-size:13px}
+.event-feature-card>p{font-size:11px;line-height:1.45}
+.event-feature-card>small{margin-top:6px;font-size:10px}
+.candidate-integrity-note{gap:9px;margin-top:10px;padding:8px 10px}
+.candidate-integrity-note>span{font-size:11px}
+.candidate-integrity-note p{font-size:11px}
+.candidate-reference{margin-top:9px;font-size:11px}
+.investigation-report{margin:0 10px 10px}
+.findings section{margin-top:10px}
+.findings li{padding:7px 9px}
+.human-review{margin:12px 0 2px;padding:12px;border:1px solid #393b33;background:#171916}
+.human-review-heading{align-items:flex-start;margin-bottom:9px}
+.human-review-heading h4{font-size:14px}
+.human-review-heading>div>p:last-child{margin:4px 0 0;font-size:12px}
+.human-review-heading>span{font-size:10px}
+.human-review form{grid-template-columns:minmax(180px,.7fr) minmax(230px,1.5fr) auto;gap:9px;margin-top:10px}
+.human-review form label{gap:5px;font-size:12px;font-weight:500}
+.human-review form label span{font-size:11px}
+.human-review select,.human-review textarea{min-height:38px;padding:7px 9px;font-size:12px}
+.human-review textarea{min-height:38px}
+.human-review .review-submit{min-height:38px;font-size:11px}
+.latest-review{font-size:12px;line-height:1.5}
+.latest-review .secondary-button{min-height:32px;margin-top:8px;padding:6px 9px;font-size:11px}
+@media(max-width:850px){.investigation-table-head,.investigation-row{grid-template-columns:minmax(150px,.8fr) minmax(180px,1.25fr) minmax(120px,.65fr) 74px;column-gap:12px}}
+@media(max-width:760px){.human-review form{grid-template-columns:1fr}.human-review .review-submit{width:100%}.human-review-heading{flex-direction:column}.human-review-heading>span{text-align:left}}
+@media(max-width:680px){.investigation-table-head{display:none}.investigation-row{grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;padding:11px 12px}.investigation-candidate-cell{grid-column:1}.investigation-state-cell{grid-column:1;grid-row:2;display:flex;align-items:center;gap:8px}.investigation-summary-cell{grid-column:1/-1;grid-row:3;-webkit-line-clamp:3;padding-left:18px}.investigation-open{grid-column:2;grid-row:1/3;padding:0 10px}.investigation-filters{overflow-x:auto;flex-wrap:nowrap;gap:17px}.investigation-filters .filter-button{flex:none}.event-row{min-height:61px}.candidate-heading{align-items:flex-start;gap:8px;padding:11px 12px}.candidate-heading-actions{gap:6px}.candidate-location{flex-wrap:wrap;font-size:12px}.detail-tabs{overflow-x:auto}.detail-tabs [role=tab]{flex:none}.detail-tab-panel#event-panel{padding-right:12px;padding-left:12px}.candidate-facts{grid-template-columns:1fr;gap:10px}.candidate-fact,.candidate-fact:first-child,.candidate-fact:last-child{padding:0;border-right:0}.candidate-assessment{grid-column:auto;padding:0}.event-feature-grid{grid-template-columns:1fr}.environmental-analysis-action{align-items:stretch;flex-direction:column}.environmental-analysis-action .action-button{width:100%}.investigation-report{margin-right:0;margin-left:0}}
