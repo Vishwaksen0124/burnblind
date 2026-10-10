@@ -13,7 +13,14 @@ NON_SENSOR_TYPES = {"WEATHER_ESTIMATE", "POPULATION_EXPOSURE_ESTIMATE", "SENSOR_
 
 
 def compare_attached_evidence(event: Any, rows: list[dict[str, Any]]) -> dict[str, Any]:
-    satellite = [row for row in rows if row.get("evidence_type") not in NON_SENSOR_TYPES and row.get("source")]
+    satellite_by_id = {}
+    for row in rows:
+        if row.get("evidence_type") in NON_SENSOR_TYPES or not row.get("source"):
+            continue
+        observation_id = row.get("observation_id")
+        if observation_id:
+            satellite_by_id.setdefault(str(observation_id), row)
+    satellite = list(satellite_by_id.values())
     coverage = [row for row in rows if row.get("evidence_type") == "SENSOR_COVERAGE"]
     # A positive detection is an observation, not proof of a sensor coverage
     # footprint. Only explicit quality-valid *negative* coverage records may

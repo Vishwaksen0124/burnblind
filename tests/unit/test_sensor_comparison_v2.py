@@ -112,3 +112,36 @@ def test_positive_detection_coverage_artifact_cannot_override_canonical_sensor_n
 
     assert result["status"] == "AGREEMENT"
     assert result["comparison_source"] == "VIIRS_NOAA20"
+
+
+def test_retried_observation_rows_do_not_duplicate_sensor_match_pairs():
+    event = CandidateEvent(
+        event_id="evt_0123456789abcdef01234567",
+        grid_id="grid-v1-cell",
+        detected_at_utc=TIME,
+        last_observed_at_utc=TIME,
+        latitude=30.9,
+        longitude=75.8,
+        detection_count=1,
+        sources=("GK2A_AMI",),
+        evidence_ids=("gk2-1",),
+        data_mode="HISTORICAL_REPLAY",
+        processing_version="fixture-v1",
+    )
+    primary = {
+        "observation_id": "gk2-1", "event_id": event.event_id,
+        "evidence_type": "SATELLITE_DETECTION", "source": "GK2A_AMI",
+        "observed_at_utc": TIME.isoformat().replace("+00:00", "Z"),
+        "latitude": 30.9, "longitude": 75.8,
+    }
+    independent = {
+        "observation_id": "firms-1", "event_id": event.event_id,
+        "evidence_type": "SENSOR_OBSERVATION", "source": "VIIRS_NOAA20",
+        "observed_at_utc": TIME.isoformat().replace("+00:00", "Z"),
+        "latitude": 30.9, "longitude": 75.8,
+    }
+
+    result = compare_attached_evidence(event, [primary, independent, independent])
+
+    assert result["status"] == "AGREEMENT"
+    assert len(result["matches"]) == 1

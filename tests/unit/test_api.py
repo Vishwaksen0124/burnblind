@@ -255,7 +255,7 @@ def test_map_layers_fall_back_to_source_evidence_when_event_batch_context_is_emp
     assert exposure.body["items"][0]["value"]["status"] == "ESTIMATED"
 
 
-def test_map_layers_fall_back_when_event_context_contains_unavailable_placeholder():
+def test_map_layers_use_projected_features_without_n_plus_one_evidence_reads():
     class ContextRepository:
         def __getattr__(self, name):
             return getattr(repository(), name)
@@ -263,7 +263,7 @@ def test_map_layers_fall_back_when_event_context_contains_unavailable_placeholde
         def get_feature_contexts(self, event_ids):
             return {
                 event_id: {
-                    "sensor_comparison": {"status": "AGREEMENT", "comparison_source": "N20", "evidence_ids": ["legacy"]},
+                    "sensor_comparison": {"status": "AGREEMENT", "comparison_source": "VIIRS_NOAA20", "evidence_ids": ["gk2a-1", "firms-1"]},
                     "exposure": {"status": "ESTIMATED", "estimated_population": 999, "source": "LEGACY"},
                 }
                 for event_id in event_ids
@@ -271,13 +271,7 @@ def test_map_layers_fall_back_when_event_context_contains_unavailable_placeholde
 
     class Evidence:
         def get_latest_derived(self, event_id, evidence_type):
-            if event_id != "evt_000000000000000000000003":
-                return None
-            if evidence_type == "SENSOR_COMPARISON":
-                return {"status": "AGREEMENT", "evidence_ids": ["gk2a-1", "firms-1"]}
-            if evidence_type == "POPULATION_EXPOSURE_ESTIMATE":
-                return {"status": "OK", "estimated_population": 12400, "source": "WORLDPOP"}
-            return None
+            raise AssertionError("complete event projections should avoid per-event evidence reads")
 
     comparisons = handle_request(
         "GET", "/map-layers", {"layer": "sensor-disagreement", "limit": "3"},
@@ -302,3 +296,55 @@ def test_event_feature_routes_explicitly_report_unavailable_data():
     assert response.status_code == 200
     assert response.body["status"] == "UNAVAILABLE"
     assert response.body["result"] is None
+
+
+def test_environmental_analysis_refreshes_stale_projection_from_source_evidence():
+    event_id = "evt_000000000000000000000001"
+
+    class ContextRepository:
+        def __getattr__(self, name):
+            return getattr(repository(), name)
+
+        def get_feature_context(self, requested_event_id):
+            assert requested_event_id == event_id
+            return {
+                "environmental_analysis": {"status": "COMPLETE", "weather": {"status": "UNAVAILABLE"}},
+                "blind_spot": {"status": "AVAILABLE", "score": 0.0},
+                "monitoring_coverage": {"status": "AVAILABLE"},
+                "sensor_comparison": {"status": "INDEPENDENT_OBSERVATION_UNAVAILABLE"},
+                "exposure": {"status": "UNAVAILABLE"},
+            }
+
+    class Evidence:
+        def list_for_event(self, requested_event_id, limit=100):
+            assert requested_event_id == event_id
+            return [{
+                "evidence_type": "SENSOR_COVERAGE",
+                "record": {
+                    "quality_valid": True, "detection_present": True,
+                    "evidence_id": "firms-positive-detection", "source": "VIIRS_NOAA20",
+                    "coverage_radius_km": 5,
+                },
+            }]
+
+        def get_latest_derived(self, requested_event_id, evidence_type):
+            if evidence_type == "SENSOR_COMPARISON":
+                return {"status": "AGREEMENT", "comparison_source": "VIIRS_NOAA20", "evidence_ids": ["gk2", "firms"]}
+            if evidence_type == "POPULATION_EXPOSURE_ESTIMATE":
+                return {"status": "ESTIMATED", "population_estimate": 9000, "source": "WorldPop Global2"}
+            if evidence_type == "WEATHER_ESTIMATE":
+                return {"status": "OK", "wind_speed_m_s": 2.0, "source": "OPEN_METEO_ERA5_REANALYSIS"}
+            return None
+
+    response = handle_request(
+        "GET", f"/events/{event_id}/environmental-analysis", {},
+        ContextRepository(), evidence_reader=Evidence(),
+    )
+
+    result = response.body["result"]
+    assert result["blind_spot"]["status"] == "UNAVAILABLE"
+    assert result["blind_spot"]["score"] is None
+    assert result["monitoring_coverage"]["status"] == "UNAVAILABLE"
+    assert result["sensor_comparison"]["comparison_source"] == "VIIRS_NOAA20"
+    assert result["exposure"]["population_estimate"] == 9000
+    assert result["environmental_analysis"]["weather"]["status"] == "OK"

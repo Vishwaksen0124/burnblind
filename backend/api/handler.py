@@ -397,7 +397,45 @@ def handle_request(
                 }
             elif len(parts) == 4 and parts[3] == "environmental-analysis" and method == "GET":
                 context_reader = getattr(repository, "get_feature_context", None)
-                context = context_reader(event.event_id) if context_reader else None
+                context = dict(context_reader(event.event_id) or {}) if context_reader else {}
+                if evidence_reader:
+                    from backend.features.environmental import _has_blindness_score, _valid_scoring_coverage
+
+                    rows = evidence_reader.list_for_event(event.event_id, limit=500)
+                    derived = {
+                        evidence_type: evidence_reader.get_latest_derived(event.event_id, evidence_type)
+                        for evidence_type in (
+                            "WEATHER_ESTIMATE", "POPULATION_EXPOSURE_ESTIMATE", "SENSOR_COMPARISON",
+                        )
+                    }
+                    if derived["SENSOR_COMPARISON"] is not None:
+                        context["sensor_comparison"] = derived["SENSOR_COMPARISON"]
+                    if derived["POPULATION_EXPOSURE_ESTIMATE"] is not None:
+                        context["exposure"] = derived["POPULATION_EXPOSURE_ESTIMATE"]
+                    analysis = dict(context.get("environmental_analysis") or {})
+                    if derived["WEATHER_ESTIMATE"] is not None:
+                        analysis["weather"] = derived["WEATHER_ESTIMATE"]
+                    if analysis:
+                        context["environmental_analysis"] = analysis
+
+                    valid_coverage = [row for row in rows if _valid_scoring_coverage(row)]
+                    scored = next((row["record"] for row in valid_coverage if _has_blindness_score(row["record"])), None)
+                    context["blind_spot"] = ({
+                        "status": "AVAILABLE",
+                        "score": float(scored["blindness_score"]),
+                        "score_version": scored["score_version"],
+                        "evidence_ids": scored["score_evidence_ids"],
+                    } if scored else {
+                        "status": "UNAVAILABLE",
+                        "score": None,
+                        "detail": "No validated coverage record with normalized blind-spot inputs and a versioned score is attached.",
+                        "evidence_ids": sorted({row["record"]["evidence_id"] for row in valid_coverage}),
+                    })
+                    context["monitoring_coverage"] = {
+                        "status": "AVAILABLE" if valid_coverage else "UNAVAILABLE",
+                        "evidence_ids": sorted({row["record"]["evidence_id"] for row in valid_coverage}),
+                        "detail": None if valid_coverage else "No source-backed sensor coverage and quality record is attached.",
+                    }
                 value = (context or {}).get("environmental_analysis")
                 status, response = 200, {"event_id": event.event_id, "status": (value or {}).get("status", "NOT_RUN"), "result": context}
             elif len(parts) == 4 and parts[3] == "environmental-analysis" and method == "POST":

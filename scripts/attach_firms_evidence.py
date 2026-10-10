@@ -82,6 +82,9 @@ def main() -> int:
         comparison_record = build_sensor_comparison_evidence(event, comparison_rows)
         if comparison_record:
             evidence_repository.put_derived_record(comparison_record)
+            events.put_feature_context(event.event_id, {
+                "sensor_comparison": comparison_record["record"],
+            })
     print(json.dumps({"events_with_matches": matched_events, "observations_matched": attached, "dry_run": args.dry_run}))
     return 0
 
