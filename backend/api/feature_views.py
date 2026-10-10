@@ -59,9 +59,12 @@ def map_layer(repository: Any, layer: str, limit: int, evidence_reader: Any | No
             else context_reader(event.event_id) if context_reader else None
         )
         value = (context or {}).get(field)
-        if evidence_reader and feature_contexts is None and layer == "sensor-disagreement":
+        # Event feature contexts are batch-loaded when supported, but source
+        # evidence may be persisted independently in the evidence table. Fall
+        # back per event only when the event projection has no value.
+        if evidence_reader and not value and layer == "sensor-disagreement":
             value = evidence_reader.get_latest_derived(event.event_id, "SENSOR_COMPARISON")
-        elif evidence_reader and feature_contexts is None and layer == "exposure":
+        elif evidence_reader and not value and layer == "exposure":
             value = evidence_reader.get_latest_derived(event.event_id, "POPULATION_EXPOSURE_ESTIMATE")
         if not value and layer == "sensor-disagreement":
             value = (context or {}).get("sensor_comparison")
