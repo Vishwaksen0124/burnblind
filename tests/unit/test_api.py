@@ -263,15 +263,15 @@ def test_map_layers_fall_back_when_event_context_contains_unavailable_placeholde
         def get_feature_contexts(self, event_ids):
             return {
                 event_id: {
-                    "sensor_comparison": {"status": "UNAVAILABLE", "evidence_ids": []},
-                    "exposure": {"status": "UNAVAILABLE", "estimated_population": None},
+                    "sensor_comparison": {"status": "AGREEMENT", "comparison_source": "N20", "evidence_ids": ["legacy"]},
+                    "exposure": {"status": "ESTIMATED", "estimated_population": 999, "source": "LEGACY"},
                 }
                 for event_id in event_ids
             }
 
     class Evidence:
         def get_latest_derived(self, event_id, evidence_type):
-            if event_id != "evt_000000000000000000000001":
+            if event_id != "evt_000000000000000000000003":
                 return None
             if evidence_type == "SENSOR_COMPARISON":
                 return {"status": "AGREEMENT", "evidence_ids": ["gk2a-1", "firms-1"]}
@@ -279,13 +279,20 @@ def test_map_layers_fall_back_when_event_context_contains_unavailable_placeholde
                 return {"status": "OK", "estimated_population": 12400, "source": "WORLDPOP"}
             return None
 
-    response = handle_request(
+    comparisons = handle_request(
         "GET", "/map-layers", {"layer": "sensor-disagreement", "limit": "3"},
         ContextRepository(), evidence_reader=Evidence(),
     )
+    exposure = handle_request(
+        "GET", "/map-layers", {"layer": "exposure", "limit": "3"},
+        ContextRepository(), evidence_reader=Evidence(),
+    )
 
-    assert response.body["status"] == "AVAILABLE"
-    assert response.body["items"][0]["value"]["status"] == "AGREEMENT"
+    assert comparisons.body["status"] == "AVAILABLE"
+    assert comparisons.body["items"][0]["value"]["status"] == "AGREEMENT"
+    assert comparisons.body["items"][0]["value"]["evidence_ids"] == ["gk2a-1", "firms-1"]
+    assert exposure.body["status"] == "AVAILABLE"
+    assert exposure.body["items"][0]["value"]["status"] == "ESTIMATED"
 
 
 def test_event_feature_routes_explicitly_report_unavailable_data():

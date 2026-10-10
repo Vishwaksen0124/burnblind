@@ -59,19 +59,26 @@ def map_layer(repository: Any, layer: str, limit: int, evidence_reader: Any | No
             else context_reader(event.event_id) if context_reader else None
         )
         value = (context or {}).get(field)
-        # Event projections can contain stale UNAVAILABLE placeholders while
-        # source-derived evidence is stored independently in the evidence table.
-        # Prefer the projection only when it contains a usable feature.
+        # Evidence rows are the source of truth for observed/derived records;
+        # event projections can retain older summaries after evidence refreshes.
         if layer == "sensor-disagreement":
-            usable = isinstance(value, dict) and value.get("status") in {
-                "AGREEMENT", "DISAGREEMENT", "INCONCLUSIVE",
-            }
-            if evidence_reader and not usable:
-                value = evidence_reader.get_latest_derived(event.event_id, "SENSOR_COMPARISON")
+            if evidence_reader:
+                source_value = evidence_reader.get_latest_derived(event.event_id, "SENSOR_COMPARISON")
+                if isinstance(source_value, dict) and source_value.get("status") in {
+                    "AGREEMENT", "DISAGREEMENT", "INCONCLUSIVE",
+                }:
+                    value = source_value
+                elif not isinstance(value, dict) or value.get("status") not in {
+                    "AGREEMENT", "DISAGREEMENT", "INCONCLUSIVE",
+                }:
+                    value = source_value
         elif layer == "exposure":
-            usable = isinstance(value, dict) and value.get("status") in {"OK", "ESTIMATED"}
-            if evidence_reader and not usable:
-                value = evidence_reader.get_latest_derived(event.event_id, "POPULATION_EXPOSURE_ESTIMATE")
+            if evidence_reader:
+                source_value = evidence_reader.get_latest_derived(event.event_id, "POPULATION_EXPOSURE_ESTIMATE")
+                if isinstance(source_value, dict) and source_value.get("status") in {"OK", "ESTIMATED"}:
+                    value = source_value
+                elif not isinstance(value, dict) or value.get("status") not in {"OK", "ESTIMATED"}:
+                    value = source_value
         if not value and layer == "sensor-disagreement":
             value = (context or {}).get("sensor_comparison")
         elif not value and layer == "exposure":
