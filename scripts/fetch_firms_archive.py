@@ -1,7 +1,8 @@
 """Fetch standard-processing FIRMS detections for the MVP fire seasons.
 
-The FIRMS MAP_KEY is read only from the FIRMS_MAP_KEY environment variable.
-It is never printed or written into the provenance manifest.
+The MAP_KEY is read from AWS Secrets Manager by default (or from
+FIRMS_MAP_KEY for an explicitly configured local run). It is never printed or
+written into the provenance manifest.
 """
 
 from __future__ import annotations
@@ -97,12 +98,23 @@ def main() -> int:
     parser.add_argument("--end-year", type=int, default=2025)
     parser.add_argument("--source", choices=ALLOWED_SOURCES, action="append", help="Repeat to select products; defaults to all standard products")
     parser.add_argument("--output-dir", type=Path, default=OUTPUT_DIR)
+    parser.add_argument("--secret-id", default=os.environ.get("FIRMS_SECRET_ID", "burnblind/firms-map-key"), help="AWS Secrets Manager secret name or ARN")
     args = parser.parse_args()
     if args.start_year < 2000 or args.end_year > 2025 or args.start_year > args.end_year:
         parser.error("year range must be ordered and within 2000–2025")
     map_key = os.environ.get("FIRMS_MAP_KEY", "").strip()
     if not map_key:
-        parser.error("set FIRMS_MAP_KEY in the environment; the key is never stored in the project")
+        try:
+            import boto3
+
+            secret = boto3.client("secretsmanager").get_secret_value(SecretId=args.secret_id)
+            map_key = secret.get("SecretString", "").strip()
+        except Exception as exc:
+            parser.error(f"could not read FIRMS credentials from Secrets Manager ({type(exc).__name__})")
+    if not map_key:
+        parser.error("FIRMS MAP_KEY is empty; set it in Secrets Manager or the local FIRMS_MAP_KEY environment")
+    if not re.fullmatch(r"[A-Fa-f0-9]{32}", map_key):
+        parser.error("FIRMS MAP_KEY is malformed")
 
     sources = args.source or list(ALLOWED_SOURCES)
     manifest_path = args.output_dir / MANIFEST_NAME
