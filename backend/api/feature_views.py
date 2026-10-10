@@ -59,26 +59,17 @@ def map_layer(repository: Any, layer: str, limit: int, evidence_reader: Any | No
             else context_reader(event.event_id) if context_reader else None
         )
         value = (context or {}).get(field)
-        # Evidence rows are the source of truth for observed/derived records;
-        # event projections can retain older summaries after evidence refreshes.
+        # Writers project derived features onto the event row. Fall back only
+        # when the projection lacks a value; per-event GSI queries create an
+        # avoidable N+1 cost for map requests.
         if layer == "sensor-disagreement":
-            if evidence_reader:
+            if evidence_reader and value is None:
                 source_value = evidence_reader.get_latest_derived(event.event_id, "SENSOR_COMPARISON")
-                if isinstance(source_value, dict) and source_value.get("status") in {
-                    "AGREEMENT", "DISAGREEMENT", "INCONCLUSIVE",
-                }:
-                    value = source_value
-                elif not isinstance(value, dict) or value.get("status") not in {
-                    "AGREEMENT", "DISAGREEMENT", "INCONCLUSIVE",
-                }:
-                    value = source_value
+                value = source_value
         elif layer == "exposure":
-            if evidence_reader:
+            if evidence_reader and value is None:
                 source_value = evidence_reader.get_latest_derived(event.event_id, "POPULATION_EXPOSURE_ESTIMATE")
-                if isinstance(source_value, dict) and source_value.get("status") in {"OK", "ESTIMATED"}:
-                    value = source_value
-                elif not isinstance(value, dict) or value.get("status") not in {"OK", "ESTIMATED"}:
-                    value = source_value
+                value = source_value
         if not value and layer == "sensor-disagreement":
             value = (context or {}).get("sensor_comparison")
         elif not value and layer == "exposure":

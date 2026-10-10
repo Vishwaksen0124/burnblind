@@ -13,7 +13,7 @@ def test_wind_from_west_moves_screening_corridor_eastward():
         width_km=5,
     )
 
-    assert result.status == "CORRIDOR_ESTIMATED_POPULATION_UNAVAILABLE"
+    assert result.status == "CORRIDOR_GEOMETRY_READY"
     assert result.downwind_bearing_degrees == 90
     assert result.distance_km == pytest.approx(7.2)
     assert result.geometry["type"] == "Polygon"

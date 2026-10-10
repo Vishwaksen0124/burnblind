@@ -30,7 +30,8 @@ def downwind_corridor(
 
     Wind direction is the direction wind comes from; the corridor follows the
     opposite bearing. This is advection geometry only, not a smoke-dispersion
-    model. Population exposure requires a separate population surface.
+    model. Population aggregation is a separate operation performed against a
+    sourced population surface after this screening geometry is created.
     """
     for name, value, low, high in (
         ("latitude", latitude, -90, 90),
@@ -48,7 +49,7 @@ def downwind_corridor(
             downwind_bearing_degrees=None,
             distance_km=0,
             status="WEATHER_UNAVAILABLE",
-            assumptions=("wind context missing", "population exposure unavailable"),
+            assumptions=("wind context missing",),
         )
     if (
         isinstance(wind_speed_m_s, bool)
@@ -74,7 +75,7 @@ def downwind_corridor(
             downwind_bearing_degrees=bearing,
             distance_km=0,
             status="NO_DOWNWIND_DISPLACEMENT",
-            assumptions=("wind speed is zero", "population exposure unavailable"),
+            assumptions=("wind speed is zero",),
         )
 
     end_lon, end_lat, _ = _GEOD.fwd(longitude, latitude, bearing, distance_m)
@@ -93,11 +94,10 @@ def downwind_corridor(
         geometry={"type": "Polygon", "coordinates": [ring]},
         downwind_bearing_degrees=bearing,
         distance_km=distance_m / 1000,
-        status="CORRIDOR_ESTIMATED_POPULATION_UNAVAILABLE",
+        status="CORRIDOR_GEOMETRY_READY",
         assumptions=(
             "wind remains steady for the supplied duration",
             "straight-line advection; no plume rise or atmospheric dispersion",
             "corridor width is a screening assumption",
-            "population exposure unavailable until a population surface is supplied",
         ),
     )
