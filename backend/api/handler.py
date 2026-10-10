@@ -286,10 +286,15 @@ def handle_request(
                     raise ValueError
                 records, next_cursor = investigation_store.list(limit, query.get("cursor"))
                 review_history = getattr(review_store, "list_for_event", None)
+                get_events = getattr(repository, "get_many", None)
+                event_ids = [str(item["event_id"]) for item in records if item.get("event_id")]
+                event_summaries = get_events(event_ids) if get_events else {}
                 status, response = 200, {
                     "items": [
                         {
                             **_investigation_payload(str(item.get("event_id", "")), item),
+                            "event": candidate_event_to_dict(event_summaries[str(item["event_id"])])
+                            if str(item.get("event_id", "")) in event_summaries else None,
                             "latest_review": _public_latest_review(review_history, str(item["event_id"]))
                             if review_history and item.get("event_id") else None,
                         }

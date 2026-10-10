@@ -177,6 +177,8 @@ def test_investigation_list_includes_only_latest_human_review():
     response = handle_request("GET", "/investigations", {}, repository(), investigation_store=InvestigationStore(), review_store=ReviewStore())
 
     assert response.status_code == 200
+    assert response.body["items"][0]["event"]["detected_at_utc"] == "2025-10-01T07:00:00Z"
+    assert response.body["items"][0]["event"]["latitude"] == 30.9
     assert response.body["items"][0]["latest_review"]["outcome"] == "NEEDS_VERIFICATION"
     assert response.body["items"][0]["latest_review"] == {"outcome": "NEEDS_VERIFICATION", "reviewed_at_utc": "2026-10-09T06:00:00Z"}
 
