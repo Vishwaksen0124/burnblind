@@ -24,8 +24,11 @@ def test_latest_derived_evidence_queries_newest_matching_record_across_pages():
         def query(self, **kwargs):
             self.calls.append(kwargs)
             if len(self.calls) == 1:
-                return {"Items": [], "LastEvaluatedKey": {"observation_id": "older-page"}}
-            return {"Items": [{"record": {"status": "AGREEMENT", "comparison_source": "VIIRS_SNPP"}}]}
+                return {
+                    "Items": [{"evidence_type": "SATELLITE_DETECTION", "record": {"status": "OBSERVED"}}],
+                    "LastEvaluatedKey": {"observation_id": "older-page"},
+                }
+            return {"Items": [{"evidence_type": "SENSOR_COMPARISON", "record": {"status": "AGREEMENT", "comparison_source": "VIIRS_SNPP"}}]}
 
     table = Table()
     result = DynamoEvidenceRepository("unused", table).get_latest_derived(EVENT_ID, "SENSOR_COMPARISON")
@@ -33,7 +36,7 @@ def test_latest_derived_evidence_queries_newest_matching_record_across_pages():
     assert result["comparison_source"] == "VIIRS_SNPP"
     assert len(table.calls) == 2
     assert table.calls[0]["ScanIndexForward"] is False
-    assert "FilterExpression" in table.calls[0]
+    assert table.calls[1]["ExclusiveStartKey"] == {"observation_id": "older-page"}
 
 
 def _event(event_id=EVENT_ID):
