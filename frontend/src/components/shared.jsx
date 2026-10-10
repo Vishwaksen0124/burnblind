@@ -6,19 +6,19 @@ export function Header({ page }) {
   const reviewerAuth = useReviewerAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const links = [
-    ['monitoring', '#monitoring', 'Monitoring'],
-    ['replay', '#replay', 'Replay'],
-    ['investigations', '#investigations', 'Investigations'],
-    ['how-it-works', page === 'home' ? '#landing-how-it-works' : '#how-it-works', 'How it works'],
-    ['methodology', page === 'home' ? '#landing-methodology' : '#methodology', 'Documentation'],
+    ['monitoring', '/monitoring', 'Monitoring'],
+    ['replay', '/replay', 'Replay'],
+    ['investigations', '/investigations', 'Investigations'],
+    ['how-it-works', page === 'home' ? '#landing-how-it-works' : '/how-it-works', 'How it works'],
+    ['methodology', page === 'home' ? '#landing-methodology' : '/methodology', 'Documentation'],
   ];
   return <header className="landing-topbar" data-menu-open={menuOpen}>
-    <a className="brand" href="#home" onClick={() => window.scrollTo(0, 0)} aria-label="BurnBlind home">
+    <a className="brand" href="/" onClick={() => window.scrollTo(0, 0)} aria-label="BurnBlind home">
       <span className="brand-mark" aria-hidden="true"><Satellite className="brand-satellite" /><Flame className="brand-flame" /></span>
       <span className="brand-name">BURN<span>BLIND</span></span>
     </a>
     <nav className="landing-nav" id="primary-navigation" aria-label="Primary navigation">
-      <a href="#home" onClick={() => { window.scrollTo(0, 0); setMenuOpen(false); }} aria-current={page === 'home' ? 'page' : undefined}>Product</a>
+      <a href="/" onClick={() => { window.scrollTo(0, 0); setMenuOpen(false); }} aria-current={page === 'home' ? 'page' : undefined}>Product</a>
       {links.map(([id, href, label]) => <a key={id} href={href} aria-current={page === id ? 'page' : undefined} onClick={() => setMenuOpen(false)}>{label}</a>)}
     </nav>
     <span className="mode-badge"><i /> HISTORICAL REPLAY · 2025</span>

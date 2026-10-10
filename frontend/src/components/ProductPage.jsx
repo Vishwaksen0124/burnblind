@@ -34,7 +34,7 @@ export default function ProductPage() {
         <p className="product-kicker"><span /> ENVIRONMENTAL INTELLIGENCE · PUNJAB + HARYANA</p>
         <h1 id="product-title">Seeing the fires<br />others <em>might miss.</em></h1>
         <p className="hero-description">BurnBlind brings satellite observations and monitoring gaps into one place, so potential fire events can be examined with their evidence and uncertainty in view.</p>
-        <div className="hero-actions"><a className="primary-button" href="#monitoring">Explore monitoring <span aria-hidden="true">→</span></a><a className="secondary-button" href="#landing-how-it-works">How it works</a></div>
+        <div className="hero-actions"><a className="primary-button" href="/monitoring">Explore monitoring <span aria-hidden="true">→</span></a><a className="secondary-button" href="#landing-how-it-works">How it works</a></div>
         <p className="hero-caveat">Historical replay · Oct–Nov 2025 · Candidate observations, not confirmed incidents</p>
       </div>
       <div className="hero-visual">
@@ -58,7 +58,7 @@ export default function ProductPage() {
     </section>
 
     <section className="preview-section" aria-labelledby="preview-title">
-      <div className="section-heading preview-heading"><div><div className="section-index">03 / THE PRODUCT</div><h2 id="preview-title">A clearer view of<br /><em>the replay region.</em></h2></div><a className="text-link" href="#monitoring">Open monitoring <span aria-hidden="true">↗</span></a></div>
+      <div className="section-heading preview-heading"><div><div className="section-index">03 / THE PRODUCT</div><h2 id="preview-title">A clearer view of<br /><em>the replay region.</em></h2></div><a className="text-link" href="/monitoring">Open monitoring <span aria-hidden="true">↗</span></a></div>
       <div className="product-preview">
         <div className="preview-toolbar"><span className="preview-brand"><i /> BURNBLIND</span><span>MONITORING / PUNJAB + HARYANA</span><span className="preview-replay">HISTORICAL REPLAY · 2025</span></div>
         <div className="preview-stats"><div><small>CANDIDATE EVENTS</small><strong>{eventTotal === null ? '—' : eventTotal.toLocaleString()}</strong></div><div><small>OBSERVATION SOURCE</small><strong>GK2A AMI</strong></div><div><small>ASSESSMENT</small><strong className="preview-unavailable">Not scored</strong></div></div>
@@ -75,7 +75,7 @@ export default function ProductPage() {
 
     <section className="story-section impact-section">
       <div className="section-index">04 / WHY IT MATTERS</div>
-      <div className="impact-copy"><h2>Make uncertainty<br /><em>visible and useful.</em></h2><p>Environmental monitoring works best when observations are traceable, limitations are explicit, and decisions stay with the people responsible for them.</p><a className="text-link" href="#methodology">Explore data & methodology <span aria-hidden="true">→</span></a></div>
+      <div className="impact-copy"><h2>Make uncertainty<br /><em>visible and useful.</em></h2><p>Environmental monitoring works best when observations are traceable, limitations are explicit, and decisions stay with the people responsible for them.</p><a className="text-link" href="/methodology">Explore data & methodology <span aria-hidden="true">→</span></a></div>
       <div className="impact-principles"><p><span>OBSERVED</span>Keep the original source and time context close to every candidate.</p><p><span>UNCERTAIN</span>Show what the replay cannot establish.</p><p><span>HUMAN-LED</span>Use investigation reports as advisory evidence for review.</p></div>
     </section>
 
@@ -86,9 +86,9 @@ export default function ProductPage() {
     </section>
 
     <section className="agent-section">
-      <div className="agent-index">06 / INVESTIGATION AGENT</div><div><h2>Evidence organized<br />for human review.</h2><p>Strands assembles source-backed findings, contradictions, missing evidence, and a human-review recommendation from one event-scoped packet. Bedrock Mantle with DeepSeek V3.2 completed a live event-scoped smoke investigation on 09 Oct 2026; the report remains advisory and makes no operational decisions.</p><p className="agent-status"><i /> Live model path verified · one event · 25 seconds</p></div><a className="secondary-button" href="#investigations">Investigation details <span aria-hidden="true">→</span></a>
+      <div className="agent-index">06 / INVESTIGATION AGENT</div><div><h2>Evidence organized<br />for human review.</h2><p>Strands assembles source-backed findings, contradictions, missing evidence, and a human-review recommendation from one event-scoped packet. Bedrock Mantle with DeepSeek V3.2 completed a live event-scoped smoke investigation on 09 Oct 2026; the report remains advisory and makes no operational decisions.</p><p className="agent-status"><i /> Live model path verified · one event · 25 seconds</p></div><a className="secondary-button" href="/investigations">Investigation details <span aria-hidden="true">→</span></a>
     </section>
 
-    <section className="final-cta"><div className="section-index">07 / EXPLORE THE REPLAY</div><h2>Start with what<br />the satellites <em>observed.</em></h2><p>Explore grouped thermal observations across Punjab and Haryana, with source context and uncertainty kept in view.</p><a className="primary-button" href="#monitoring">Open monitoring <span aria-hidden="true">→</span></a></section>
+    <section className="final-cta"><div className="section-index">07 / EXPLORE THE REPLAY</div><h2>Start with what<br />the satellites <em>observed.</em></h2><p>Explore grouped thermal observations across Punjab and Haryana, with source context and uncertainty kept in view.</p><a className="primary-button" href="/monitoring">Open monitoring <span aria-hidden="true">→</span></a></section>
   </div>;
 }
