@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -14,6 +15,23 @@ import zipfile
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def validate_frontend_configuration(dist: Path, settings: dict[str, str | None]) -> None:
+    """Refuse to publish an artifact built without its deployment config."""
+    api_base_url = settings.get("VITE_API_BASE_URL")
+    if not api_base_url:
+        raise ValueError("missing frontend build configuration: VITE_API_BASE_URL")
+    bundles = sorted((dist / "assets").glob("*.js"))
+    if not bundles:
+        raise ValueError("built frontend has no JavaScript assets")
+    bundle_text = b"\n".join(bundle.read_bytes() for bundle in bundles)
+    absent = [
+        name for name, value in settings.items()
+        if value and value.encode() not in bundle_text
+    ]
+    if absent:
+        raise ValueError(f"built frontend does not contain configured values for: {', '.join(absent)}")
 
 
 def aws_json(*arguments: str) -> dict:
@@ -40,6 +58,15 @@ def main() -> int:
         parser.error(f"built frontend not found in {args.dist}; run npm run build first")
     if args.timeout_seconds < 1:
         parser.error("timeout-seconds must be positive")
+    try:
+        validate_frontend_configuration(args.dist, {
+            "VITE_API_BASE_URL": os.environ.get("VITE_API_BASE_URL"),
+            "VITE_COGNITO_REGION": os.environ.get("VITE_COGNITO_REGION"),
+            "VITE_COGNITO_USER_POOL_ID": os.environ.get("VITE_COGNITO_USER_POOL_ID"),
+            "VITE_COGNITO_CLIENT_ID": os.environ.get("VITE_COGNITO_CLIENT_ID"),
+        })
+    except ValueError as error:
+        parser.error(str(error))
 
     archive_buffer = io.BytesIO()
     with zipfile.ZipFile(archive_buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
