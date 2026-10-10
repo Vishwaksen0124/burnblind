@@ -228,6 +228,33 @@ def test_action_center_and_map_layers_report_missing_inputs_without_inventing_da
     assert comparison.body["status"] == "UNAVAILABLE"
 
 
+def test_map_layers_fall_back_to_source_evidence_when_event_batch_context_is_empty():
+    class Evidence:
+        def get_latest_derived(self, event_id, evidence_type):
+            if event_id != "evt_000000000000000000000001":
+                return None
+            if evidence_type == "SENSOR_COMPARISON":
+                return {"status": "AGREEMENT", "evidence_ids": ["gk2a-1", "firms-1"]}
+            if evidence_type == "POPULATION_EXPOSURE_ESTIMATE":
+                return {"status": "OK", "estimated_population": 12400, "source": "WORLDPOP"}
+            return None
+
+    evidence = Evidence()
+    comparisons = handle_request(
+        "GET", "/map-layers", {"layer": "sensor-disagreement", "limit": "3"},
+        repository(), evidence_reader=evidence,
+    )
+    exposure = handle_request(
+        "GET", "/map-layers", {"layer": "exposure", "limit": "3"},
+        repository(), evidence_reader=evidence,
+    )
+
+    assert comparisons.body["status"] == "AVAILABLE"
+    assert comparisons.body["items"][0]["value"]["evidence_ids"] == ["gk2a-1", "firms-1"]
+    assert exposure.body["status"] == "AVAILABLE"
+    assert exposure.body["items"][0]["value"]["status"] == "ESTIMATED"
+
+
 def test_event_feature_routes_explicitly_report_unavailable_data():
     event_id = "evt_000000000000000000000001"
     response = handle_request("GET", f"/events/{event_id}/exposure", {}, repository())
