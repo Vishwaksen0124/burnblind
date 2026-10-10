@@ -19,17 +19,18 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def validate_frontend_configuration(dist: Path, settings: dict[str, str | None]) -> None:
     """Refuse to publish an artifact built without its deployment config."""
-    api_base_url = settings.get("VITE_API_BASE_URL")
-    if not api_base_url:
-        raise ValueError("missing frontend build configuration: VITE_API_BASE_URL")
+    missing = [name for name, value in settings.items() if not value]
+    if missing:
+        raise ValueError(f"missing frontend build configuration: {', '.join(missing)}")
     bundles = sorted((dist / "assets").glob("*.js"))
     if not bundles:
         raise ValueError("built frontend has no JavaScript assets")
     bundle_text = b"\n".join(bundle.read_bytes() for bundle in bundles)
-    absent = [
-        name for name, value in settings.items()
-        if value and value.encode() not in bundle_text
-    ]
+    # The user-pool ID is only used in a boolean feature flag and can be
+    # constant-folded out by Vite. The API URL, region, and client ID are used
+    # at runtime and must be present in the generated bundle.
+    embedded = ("VITE_API_BASE_URL", "VITE_COGNITO_REGION", "VITE_COGNITO_CLIENT_ID")
+    absent = [name for name in embedded if settings[name].encode() not in bundle_text]
     if absent:
         raise ValueError(f"built frontend does not contain configured values for: {', '.join(absent)}")
 
