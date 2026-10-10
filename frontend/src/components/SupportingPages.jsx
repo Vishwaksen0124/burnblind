@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getInvestigations } from '../api.js';
+import { formatTimestamp } from '../lib/eventView.js';
 import { PageHeading, StateMessage } from './shared.jsx';
 
 const PIPELINE = [
@@ -116,7 +117,7 @@ export function InvestigationsPage() {
         return <article className="investigation-row" key={item.event_id}>
           <div className="investigation-candidate-cell">
             <span className="investigation-row-marker" aria-hidden="true" />
-            <div><h2>{place}</h2><p>{item.event?.detected_at_utc ? `Observed ${formatDate(item.event.detected_at_utc)}` : `Requested ${formatDate(item.requested_at_utc)}`}</p></div>
+            <div><h2>{place}</h2><p>{item.event?.detected_at_utc ? `Observed ${formatTimestamp(item.event.detected_at_utc)}` : `Requested ${formatTimestamp(item.requested_at_utc)}`}</p></div>
           </div>
           <p className="investigation-summary-cell">{summary || (item.status === 'FAILED' ? `Investigation failed${item.error_code ? ` · ${item.error_code}` : ''}. Open to inspect or retry.` : 'Investigation report is not available yet.')}</p>
           <div className="investigation-state-cell"><span className={`investigation-status status-${reviewed ? 'completed' : item.status?.toLowerCase()}`}>{statusLabel}</span>{reviewed && <small>{item.latest_review.outcome.replaceAll('_', ' ')}</small>}</div>
@@ -127,12 +128,6 @@ export function InvestigationsPage() {
       {nextCursor && <button className="action-button investigation-load-more" disabled={loadingMore} onClick={loadMore}>{loadingMore ? 'Loading…' : 'Load more investigations'}</button>}
     </section></>}
   </>;
-}
-
-function formatDate(value) {
-  if (!value) return 'time unavailable';
-  const date = new Date(value);
-  return Number.isNaN(date.valueOf()) ? 'time unavailable' : date.toLocaleString();
 }
 
 function formatCoordinates(event) {
