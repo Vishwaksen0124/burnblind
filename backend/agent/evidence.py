@@ -35,27 +35,27 @@ class DynamoEvidenceRepository:
         self._table.put_item(Item=_dynamo_safe(record))
 
     def get_latest_derived(self, event_id: str, evidence_type: str) -> dict[str, Any] | None:
-        from boto3.dynamodb.conditions import Attr, Key
+        from boto3.dynamodb.conditions import Key
 
         result = self._table.query(
             IndexName="event-id-observed-at",
             KeyConditionExpression=Key("event_id").eq(event_id),
             ScanIndexForward=False,
-            FilterExpression=Attr("evidence_type").eq(evidence_type),
             Limit=100,
         )
-        rows = result.get("Items", [])
-        while not rows and result.get("LastEvaluatedKey"):
+        while True:
+            for row in result.get("Items", []):
+                if row.get("evidence_type") == evidence_type and isinstance(row.get("record"), dict):
+                    return _plain(row).get("record")
+            if not result.get("LastEvaluatedKey"):
+                return None
             result = self._table.query(
                 IndexName="event-id-observed-at",
                 KeyConditionExpression=Key("event_id").eq(event_id),
                 ScanIndexForward=False,
-                FilterExpression=Attr("evidence_type").eq(evidence_type),
                 ExclusiveStartKey=result["LastEvaluatedKey"],
                 Limit=100,
             )
-            rows = result.get("Items", [])
-        return _plain(rows[0]).get("record") if rows and isinstance(rows[0].get("record"), dict) else None
 
 
 def build_evidence_tools(
