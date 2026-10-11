@@ -133,12 +133,25 @@ def build_evidence_tools(
     @tool
     def get_historical_context(event_id: str) -> dict[str, Any]:
         """Read documented historical activity near the event, if published to the API."""
-        if scoped_event(event_id) is None:
+        event = scoped_event(event_id)
+        if event is None:
             return {"status": "NOT_FOUND", "event_id": event_id}
-        return {
-            "status": "UNAVAILABLE",
-            "detail": "Historical context is not attached to deployed candidate events.",
-        }
+        existing = evidence.get_latest_derived(event_id, "HISTORICAL_CONTEXT")
+        if existing is None:
+            from backend.ingestion.historical_context import build_event_historical_evidence
+
+            derived = build_event_historical_evidence(event)
+            if derived is None:
+                return {
+                    "status": "UNAVAILABLE",
+                    "detail": "The pinned GK2A historical index does not cover this event's month or any complete prior year.",
+                }
+            evidence.put_derived_record(derived)
+            existing = derived["record"]
+        evidence_id = existing.get("evidence_id")
+        if evidence_id:
+            registry[evidence_id] = {"type": "HISTORICAL_CONTEXT", "source": existing.get("source", "GK2A historical fire-hotspot dataset")}
+        return existing
 
     @tool
     def get_weather(event_id: str) -> dict[str, Any]:

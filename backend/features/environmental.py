@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import timezone
 import hashlib
 import json
+from pathlib import Path
 from typing import Any, Callable
 
 from backend.api.repository import CandidateEventRepository
@@ -34,6 +35,23 @@ class EnvironmentalAnalysisService:
             return {"event_id": event_id, "status": "NOT_FOUND"}
 
         rows = self.evidence.list_for_event(event_id)
+        historical_row = next((row for row in reversed(rows)
+                               if row.get("evidence_type") == "HISTORICAL_CONTEXT"
+                               and isinstance(row.get("record"), dict)
+                               and row["record"].get("status") == "OK"), None)
+        if historical_row is None:
+            from backend.ingestion.historical_context import build_event_historical_evidence
+
+            historical_row = build_event_historical_evidence(event)
+            if historical_row is not None:
+                self.evidence.put_derived_record(historical_row)
+                rows.append(historical_row)
+        historical_context = (
+            historical_row["record"] if historical_row else {
+                "status": "UNAVAILABLE",
+                "detail": "The pinned GK2A historical index does not cover this event's month or any complete prior year.",
+            }
+        )
         saved_weather = next((row.get("record") for row in reversed(rows)
                               if row.get("evidence_type") == "WEATHER_ESTIMATE" and isinstance(row.get("record"), dict)
                               and row["record"].get("status") == "OK"), None)
@@ -73,11 +91,6 @@ class EnvironmentalAnalysisService:
             "detail": "No validated coverage record with normalized blind-spot inputs and a versioned score is attached.",
             "evidence_ids": coverage_ids,
         })
-        historical_context = {
-            "status": "UNAVAILABLE",
-            "detail": "No separately sourced historical fire-activity context is attached to this event.",
-        }
-
         complete = weather.get("status") == "OK" and exposure.get("status") in {"OK", "ESTIMATED"}
         context = {
             "environmental_analysis": {
@@ -98,8 +111,7 @@ class EnvironmentalAnalysisService:
         writer = getattr(self.events, "put_feature_context", None)
         if writer:
             writer(event_id, context)
-            if complete:
-                self._persist_score_features(event, rows, context, writer)
+            self._persist_score_features(event, rows, context, writer)
         return {"event_id": event_id, **context}
 
     def _persist_score_features(self, event: Any, rows: list[dict[str, Any]], context: dict[str, Any], writer: Any) -> None:
@@ -117,6 +129,7 @@ class EnvironmentalAnalysisService:
         ]
         comparison = context.get("sensor_comparison") or {}
         exposure = context.get("exposure") or {}
+        history = context.get("environmental_analysis", {}).get("historical_context") or {}
         packet = {
             "observations": observations,
             "sensor_comparison": {
@@ -127,16 +140,18 @@ class EnvironmentalAnalysisService:
                 "population_estimate": exposure.get("population_estimate"),
                 "evidence_ids": [exposure["evidence_id"]] if exposure.get("evidence_id") else [],
             },
+            "history": {
+                "detection_count": history.get("detection_count"),
+                "years_covered": history.get("years_covered"),
+                "as_of_utc": history.get("as_of_utc"),
+                "evidence_ids": [history["evidence_id"]] if history.get("evidence_id") else [],
+            },
         }
+        score_config = json.loads((Path(__file__).resolve().parents[2] / "config" / "scoring.v1.json").read_text(encoding="utf-8"))
         derived = derive_score_features(
             packet,
             event_time_utc=event.detected_at_utc,
-            normalization={
-                "max_observation_gap_hours": 24,
-                "thermal_signal_max_delta_k": 30,
-                "historical_hits_per_year_max": 10,
-                "exposure_population_max": 1_000_000,
-            },
+            normalization=score_config["normalization"],
             version="features-v2-environmental",
         )
         writer(event.event_id, {"score_features": {
@@ -148,6 +163,8 @@ class EnvironmentalAnalysisService:
                 "sensor_disagreement",
             )
             if getattr(derived.features, name) is not None or name == "sensor_disagreement"
+        }, "score_feature_evidence_ids": {
+            name: list(ids) for name, ids in derived.evidence_ids_by_feature.items() if ids
         }})
 
     def _weather(self, event: Any) -> dict[str, Any]:

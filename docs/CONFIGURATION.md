@@ -46,10 +46,13 @@ trigger evaluates a DynamoDB event after a deterministic producer writes a
 `score_features` map using `ScoreFeatures` field names and normalized values in
 `[0, 1]`. Missing features alone do not queue an investigation.
 
-The active versioned baseline is `config/scoring.v1.json`. Its weights are
-only a transparent heuristic configuration; do not describe the scores as
-calibrated probabilities. Keep source-specific feature normalization outside
-the scorer and record the config version with every derived event.
+The active versioned baseline is `config/scoring.v1.json`. Its weights and
+feature normalization caps are transparent heuristics; do not describe the
+scores as calibrated probabilities. Historical activity is normalized against
+40 same-grid, same-month GK2A detection records per prior year. This cap was
+selected near the upper tail of the replay distribution to keep the previous
+median-saturating scale useful; it is not calibrated against ground truth.
+Record the score and feature versions with every derived event.
 
 ## 3. Environment variables
 

@@ -134,3 +134,24 @@ missing, that score is `null`. Priority uses the specified product of
 blindness, fire-likelihood, exposure, and urgency; it is `null` if any of
 those inputs is unavailable. Sensor disagreement increases uncertainty and
 does not increase fire likelihood by itself.
+
+The environmental worker derives `historical_activity` from the pinned GK2A
+seasonal archive when the event falls in October or November and at least one
+complete earlier archive year is available. It matches the candidate's 5 km
+grid, uses the same calendar month in earlier years only, and records the
+source release, temporal cutoff, count semantics, and evidence ID. The count
+is source detection records, not unique fires or ground truth. Historical
+activity is context and cannot establish a current fire. The feature version
+is `features-v2-environmental`; scoring weights and the score version remain
+unchanged. Unit tests reject future cutoffs.
+
+Feature normalization is versioned in `config/scoring.v1.json`. Historical
+counts are normalized against 40 source detection records per grid/month/year,
+a descriptive cap selected from the replay's historical distribution to avoid
+the previous cap saturating at the median. This scale is not calibrated against
+ground truth.
+
+Historical archive coverage does not include satellite acquisition schedules,
+valid-pixel masks, or sensor-quality measurements. This addition therefore
+does not create blindness/coverage scores or final priority when those inputs
+are absent. Those fields remain unavailable by design.

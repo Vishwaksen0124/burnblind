@@ -106,7 +106,8 @@ def derive_score_features(
             raise ValueError("historical context measurements require evidence_ids")
         count = _nonnegative_integer(count, "history.detection_count")
         years = _positive_integer(years, "history.years_covered")
-        last = _aware(_parse_time(history.get("latest_observation_at_utc")), "history.latest_observation_at_utc")
+        cutoff = history.get("as_of_utc", history.get("latest_observation_at_utc"))
+        last = _aware(_parse_time(cutoff), "history.as_of_utc")
         if last > event_time:
             raise ValueError("historical context includes records after the event time")
         historical_activity = _unit(count / (years * normalization["historical_hits_per_year_max"]))

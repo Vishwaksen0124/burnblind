@@ -6,6 +6,10 @@ or ground-truth labels.
 
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
+from functools import lru_cache
+import hashlib
+import json
+from pathlib import Path
 from typing import Iterable
 from zoneinfo import ZoneInfo
 
@@ -13,6 +17,8 @@ from backend.common.models import FireObservation
 
 
 IST = ZoneInfo("Asia/Kolkata")
+SOURCE_VERSION = "zenodo:20084790:v1"
+_INDEX_PATH = Path(__file__).resolve().parents[2] / "data" / "reference" / "gk2a_scoring_index_v1.json"
 
 
 def summarize_detections(records: Iterable[FireObservation]) -> dict:
@@ -107,4 +113,67 @@ def query_historical_context(
         "historical_detections_in_complete_prior_years": prior_complete_year_count,
         "source": "GK2A dataset detection counts; not unique fires or ground truth",
         "source_version": "zenodo:20084790:v1",
+    }
+
+
+@lru_cache(maxsize=1)
+def load_scoring_index(path: str | Path = _INDEX_PATH) -> dict:
+    """Load the compact, version-pinned seasonal index used by deployed scoring."""
+    index = json.loads(Path(path).read_text(encoding="utf-8"))
+    if index.get("record_id") != "20084790" or index.get("dataset_version") != "v1":
+        raise ValueError("historical scoring index is not the pinned Zenodo release")
+    if index.get("months") != [10, 11] or not index.get("complete_years"):
+        raise ValueError("historical scoring index has unsupported temporal coverage")
+    return index
+
+
+def build_event_historical_evidence(event, index: dict | None = None) -> dict | None:
+    """Build a same-grid, same-month historical aggregate using prior years only.
+
+    The count is a number of source detection records, not unique fires or
+    ground truth. Events outside the source's October-November coverage, or
+    without a complete earlier source year, remain unavailable.
+    """
+    index = index or load_scoring_index()
+    local_time = event.detected_at_utc.astimezone(IST)
+    if local_time.month not in index["months"]:
+        return None
+    prior_years = [int(year) for year in index["complete_years"] if int(year) < local_time.year]
+    if not prior_years:
+        return None
+    by_year = index.get("by_grid_year_month", {}).get(event.grid_id, {})
+    count = sum(
+        int(by_year.get(str(year), {}).get(str(local_time.month), 0))
+        for year in prior_years
+    )
+    event_time = event.detected_at_utc.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    evidence_id = "hist_" + hashlib.sha256(
+        f"{event.event_id}:{event.grid_id}:{local_time.month}:{','.join(map(str, prior_years))}:{SOURCE_VERSION}".encode()
+    ).hexdigest()[:24]
+    record = {
+        "status": "OK",
+        "evidence_id": evidence_id,
+        "grid_id": event.grid_id,
+        "as_of_utc": event_time,
+        "month_ist": local_time.month,
+        "detection_count": count,
+        "years_covered": len(prior_years),
+        "coverage_years": prior_years,
+        "count_semantics": "GK2A source detection records in the same 5 km grid and calendar month; not unique fires or ground truth",
+        "source": "GK2A historical fire-hotspot dataset",
+        "source_version": SOURCE_VERSION,
+        "doi": "10.5281/zenodo.20084790",
+        "license": "CC BY 4.0",
+        "interpretation": "Historical context only; it does not establish that the current candidate is a fire.",
+    }
+    return {
+        "observation_id": evidence_id,
+        "event_id": event.event_id,
+        "event_time_utc": event_time,
+        "observed_at_utc": event_time,
+        "source": "GK2A historical fire-hotspot dataset",
+        "evidence_type": "HISTORICAL_CONTEXT",
+        "latitude": event.latitude,
+        "longitude": event.longitude,
+        "record": record,
     }

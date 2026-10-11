@@ -37,7 +37,7 @@ These are the canonical contracts shared by ingestion, processing, API, storage,
   "priority_score": 0.88,
   "status": "REVIEW_REQUIRED",
   "investigation_status": "QUEUED",
-  "feature_version": "features-v1",
+  "feature_version": "features-v2-environmental",
   "scoring_version": "score-v1"
 }
 ```

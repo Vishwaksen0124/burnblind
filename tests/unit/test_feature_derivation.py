@@ -59,6 +59,32 @@ def test_measured_features_are_normalized_and_keep_evidence_lineage():
     assert "viirs-pass-1" in derived.evidence_ids_by_feature["independent_detection_support"]
 
 
+def test_historical_context_as_of_cutoff_is_accepted_and_cited():
+    packet = {"history": {
+        "detection_count": 12,
+        "years_covered": 6,
+        "as_of_utc": "2025-10-01T10:00:00Z",
+        "evidence_ids": ["hist-source-query-1"],
+    }}
+
+    derived = derive_score_features(packet, event_time_utc=EVENT_TIME, normalization=NORMALIZATION, version="feature-v2")
+
+    assert derived.features.historical_activity == 0.2
+    assert derived.evidence_ids_by_feature["historical_activity"] == ("hist-source-query-1",)
+
+
+def test_historical_context_cutoff_after_event_is_rejected():
+    packet = {"history": {
+        "detection_count": 12,
+        "years_covered": 6,
+        "as_of_utc": "2025-10-01T10:01:00Z",
+        "evidence_ids": ["hist-source-query-1"],
+    }}
+
+    with pytest.raises(ValueError, match="after the event time"):
+        derive_score_features(packet, event_time_utc=EVENT_TIME, normalization=NORMALIZATION, version="feature-v2")
+
+
 def test_future_satellite_record_is_rejected_to_prevent_leakage():
     packet = {"observations": [{
         "evidence_id": "future", "source": "GK2A_AMI", "observed_at_utc": "2025-10-01T10:01:00Z",
