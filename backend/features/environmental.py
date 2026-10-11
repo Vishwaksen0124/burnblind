@@ -23,26 +23,35 @@ class EnvironmentalAnalysisService:
         evidence: Any,
         weather_lookup: Callable[..., Any] | None = None,
         population_lookup: Callable[..., Any] | None = None,
+        cache_only: bool = False,
     ):
         self.events = events
         self.evidence = evidence
         self.weather_lookup = weather_lookup
         self.population_lookup = population_lookup
+        self.cache_only = cache_only
+        self._historical_index = None
 
     def analyze(self, event_id: str) -> dict[str, Any]:
         event = self.events.get(event_id)
         if event is None:
             return {"event_id": event_id, "status": "NOT_FOUND"}
-
         rows = self.evidence.list_for_event(event_id)
+        return self.analyze_event(event, rows)
+
+    def analyze_event(self, event: Any, rows: list[dict[str, Any]]) -> dict[str, Any]:
+        """Enrich a preloaded event and its evidence, avoiding repeat reads in batch jobs."""
+        event_id = event.event_id
         historical_row = next((row for row in reversed(rows)
                                if row.get("evidence_type") == "HISTORICAL_CONTEXT"
                                and isinstance(row.get("record"), dict)
                                and row["record"].get("status") == "OK"), None)
         if historical_row is None:
-            from backend.ingestion.historical_context import build_event_historical_evidence
+            from backend.ingestion.historical_context import build_event_historical_evidence, load_scoring_index
 
-            historical_row = build_event_historical_evidence(event)
+            if self._historical_index is None:
+                self._historical_index = load_scoring_index()
+            historical_row = build_event_historical_evidence(event, self._historical_index)
             if historical_row is not None:
                 self.evidence.put_derived_record(historical_row)
                 rows.append(historical_row)
@@ -56,7 +65,10 @@ class EnvironmentalAnalysisService:
                               if row.get("evidence_type") == "WEATHER_ESTIMATE" and isinstance(row.get("record"), dict)
                               and row["record"].get("status") == "OK"), None)
         try:
-            weather = saved_weather or self._weather(event)
+            weather = saved_weather or (
+                {"status": "UNAVAILABLE", "detail": "No saved weather estimate; cache-only enrichment did not query an external provider."}
+                if self.cache_only else self._weather(event)
+            )
         except Exception as exc:
             weather = {"status": "UNAVAILABLE", "detail": f"Weather source error: {type(exc).__name__}."}
 
@@ -64,14 +76,14 @@ class EnvironmentalAnalysisService:
                                if row.get("evidence_type") == "POPULATION_EXPOSURE_ESTIMATE" and isinstance(row.get("record"), dict)
                                and row["record"].get("status") in {"OK", "ESTIMATED"}), None)
         exposure = saved_exposure or {"status": "UNAVAILABLE", "detail": "Sourced event-time wind is required."}
-        if saved_exposure is None and weather.get("status") == "OK":
+        if saved_exposure is None and weather.get("status") == "OK" and not self.cache_only:
             try:
                 exposure = self._exposure(event, weather)
             except Exception as exc:
                 exposure = {"status": "UNAVAILABLE", "detail": f"Population source error: {type(exc).__name__}."}
 
         try:
-            comparison = self._comparison(event)
+            comparison = self._comparison(event, rows)
         except Exception as exc:
             comparison = {"status": "UNAVAILABLE", "detail": f"Sensor comparison error: {type(exc).__name__}."}
 
@@ -227,8 +239,9 @@ class EnvironmentalAnalysisService:
         })
         return result
 
-    def _comparison(self, event: Any) -> dict[str, Any]:
-        rows = self.evidence.list_for_event(event.event_id)
+    def _comparison(self, event: Any, rows: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+        if rows is None:
+            rows = self.evidence.list_for_event(event.event_id)
         from backend.processing.evidence_comparison import compare_attached_evidence
         comparison = compare_attached_evidence(event, rows)
         if comparison.get("status") != "INDEPENDENT_OBSERVATION_UNAVAILABLE":

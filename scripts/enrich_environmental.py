@@ -24,6 +24,7 @@ def main() -> int:
     parser.add_argument("--region", required=True, help="AWS region containing the replay tables")
     parser.add_argument("--event-id", help="Enrich exactly one event")
     parser.add_argument("--all", action="store_true", help="Process every event in the table")
+    parser.add_argument("--cache-only", action="store_true", help="Never query weather or population providers; reuse saved evidence only")
     parser.add_argument("--limit", type=int, default=1, help="Maximum events to process (default: 1; max: 100)")
     parser.add_argument("--pause-seconds", type=float, default=1.0, help="Delay between events for provider rate control")
     args = parser.parse_args()
@@ -52,7 +53,7 @@ def main() -> int:
         print(json.dumps({"processed": 0, "reason": "No matching events."}))
         return 0
 
-    service = EnvironmentalAnalysisService(events, evidence)
+    service = EnvironmentalAnalysisService(events, evidence, cache_only=args.cache_only)
     counts = {"COMPLETE": 0, "PARTIAL": 0, "NOT_FOUND": 0, "ERROR": 0}
     for index, event in enumerate(selected):
         try:

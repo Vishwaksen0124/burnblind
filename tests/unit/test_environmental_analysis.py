@@ -90,7 +90,7 @@ def test_available_score_features_persist_when_weather_and_exposure_are_unavaila
     events = Events()
     service = EnvironmentalAnalysisService(events, Evidence())
     service._weather = lambda _: {"status": "UNAVAILABLE"}
-    service._comparison = lambda _: {"status": "INDEPENDENT_OBSERVATION_UNAVAILABLE", "evidence_ids": []}
+    service._comparison = lambda *_: {"status": "INDEPENDENT_OBSERVATION_UNAVAILABLE", "evidence_ids": []}
 
     result = service.analyze(event.event_id)
 
@@ -101,3 +101,42 @@ def test_available_score_features_persist_when_weather_and_exposure_are_unavaila
     assert score_update["score_features"]["historical_activity"] is not None
     assert score_update["score_feature_evidence_ids"]["historical_activity"]
     assert "exposure_score" not in score_update["score_features"]
+
+
+def test_cache_only_never_queries_weather_or_population_providers():
+    event = SimpleNamespace(
+        event_id="evt_0123456789abcdef01234567",
+        grid_id="grid-v1-utm43n-132-672",
+        detected_at_utc=datetime(2025, 10, 1, 10, tzinfo=timezone.utc),
+        last_observed_at_utc=datetime(2025, 10, 1, 10, tzinfo=timezone.utc),
+        latitude=30.5,
+        longitude=76.5,
+    )
+
+    class Events:
+        def get(self, event_id):
+            return event if event_id == event.event_id else None
+
+        def put_feature_context(self, event_id, features):
+            pass
+
+    class Evidence:
+        def list_for_event(self, event_id):
+            return []
+
+        def put_derived_record(self, record):
+            pass
+
+    def forbidden_lookup(*args, **kwargs):
+        raise AssertionError("cache-only enrichment must not query a provider")
+
+    service = EnvironmentalAnalysisService(
+        Events(), Evidence(), weather_lookup=forbidden_lookup,
+        population_lookup=forbidden_lookup, cache_only=True,
+    )
+    service._comparison = lambda _: {"status": "INDEPENDENT_OBSERVATION_UNAVAILABLE", "evidence_ids": []}
+    result = service.analyze(event.event_id)
+
+    assert result["environmental_analysis"]["weather"]["status"] == "UNAVAILABLE"
+    assert result["exposure"]["status"] == "UNAVAILABLE"
+    assert result["environmental_analysis"]["historical_context"]["status"] == "OK"

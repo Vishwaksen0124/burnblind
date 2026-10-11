@@ -30,7 +30,7 @@ The public dashboard supports reading replay data. Investigation requests and re
 
 ### Production replay snapshot
 
-Live API values checked on **October 11, 2026**:
+Live API values checked after a cache-only refresh on **October 11, 2026**:
 
 | Layer | Available records | What the value means |
 |---|---:|---|
@@ -39,7 +39,11 @@ Live API values checked on **October 11, 2026**:
 | Population estimates | 250 | WorldPop modelled population within a screening corridor, not people known to be affected |
 | Matched sensor comparisons | 4 | Source-matched observations; all currently report `AGREEMENT` |
 | Bundled historical source index | 352,435 detections · 3,856 grids | Pinned GK2A archive (2019–2025, October–November); enrichment uses complete prior years only |
+| Historical context attached | 250 | Same-grid, same-month GK2A detection records from complete prior years; cited in each event report |
+| Refreshed deterministic features | 250 | `features-v2-environmental`; includes available thermal and historical inputs, with provenance |
+| Fire-likelihood score | 250 | Heuristic application score; not a calibrated probability or confirmation |
 | Valid sensor-coverage / blind-spot scores | 0 | The replay has no valid, normalized coverage measurements, so a score is correctly unavailable |
+| Final priority score | 0 | Priority remains provisional because required score components are unavailable |
 
 The production data was audited and corrected across all 250 events. The audit explains the two invalid coverage artifacts, duplicate comparison pairs, and the fixes in [the data-quality report](docs/DATA_QUALITY_AUDIT_2026-10-10.md).
 
@@ -155,7 +159,7 @@ See [data sources](docs/DATA_SOURCES.md), [attribution](docs/ATTRIBUTION.md), an
 
 - The production replay has source-backed weather and exposure estimates for its 250 events and four distinct sensor comparisons.
 - **Blind-spot scoring is unavailable for this replay.** Valid sensor-coverage and quality measurements have not been attached. This is a data gap, not a score of zero.
-- Historical activity is implemented and deployed as a cited, time-safe deterministic feature. Existing production event rows still need a one-time data-only refresh before that context and the recalculated scores appear in their reports; this refresh will not invoke the Investigation Agent. Scores remain heuristic, and the replay still lacks valid coverage inputs for blindness and final priority; no missing values are replaced with zero.
+- Historical activity is implemented and deployed as a cited, time-safe deterministic feature. A cache-only refresh completed for all 250 production events on October 11, 2026, reusing saved weather and population evidence; it made no weather/population provider calls and invoked no Investigation Agent/model. All 250 now have the `features-v2-environmental` feature set, historical context, and a deterministic heuristic fire-likelihood score. Valid coverage inputs remain absent, so blindness and final priority stay unavailable/provisional; missing values are not replaced with zero. These scores are not calibrated against ground truth.
 - An event-scoped investigation flow has been deployed and a live model-backed report was previously verified. The broader model evaluation set and authenticated reviewer write flow remain incomplete; see the [agent evaluation notes](docs/AGENT_EVALUATION.md) and [release checklist](docs/CHECKLIST.md).
 - The product covers a limited historical geography and period. External providers can be unavailable or revise their data.
 
