@@ -86,6 +86,17 @@ team corrected the source projections and rechecked all 250 events. Because the
 replay lacks valid coverage measurements, the blind-spot layer now honestly
 shows zero available scores instead of fabricated zeros.
 
+## 8. Add time-safe historical activity to scoring — October 11
+
+- [48a916d — add source-backed historical activity to scoring](https://github.com/Vishwaksen0124/burnblind/commit/48a916d)
+
+A compact index is built from the pinned GK2A release and bundled with the
+environmental and investigation workers. For each candidate, the system uses
+same-grid, same-month records from complete earlier years, cites the derived
+context, and rejects future cutoffs. The scoring normalization is versioned;
+coverage-dependent blindness and final priority remain unavailable without
+actual acquisition/quality measurements.
+
 ## Why the commit history is incremental
 
 The commits preserve the sequence of implementation, testing, deployment fixes,
