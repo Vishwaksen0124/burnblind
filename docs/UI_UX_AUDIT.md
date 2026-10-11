@@ -37,7 +37,7 @@ Inspected the React/Vite frontend routes, shared header, monitoring candidate qu
 - Browser visual inspection at 1440px and 390px — completed for a real event review, including source evidence, saved-review state, and mobile stacking.
 - Browser visual inspection at 1440px — completed for populated monitoring data; candidate queue rows are compact and map markers remain visible.
 - Production API read checks — `/investigations?limit=50` and `/events?limit=1` returned HTTP 200 with real records.
-- Dashboard workflow for commit `917e2ab` passed and Amplify job 56 succeeded. Backend workflow for the same commit passed unit tests, SAM validation/build, deployment, and API smoke tests.
+- Dashboard workflow for commit `4fad62ff` passed and Amplify job 56 succeeded. Backend workflow for the same commit passed unit tests, SAM validation/build, deployment, and API smoke tests.
 - After deployment, the production investigations endpoint returned four records with event coordinates, observed timestamps, review outcomes, and failure status. All clean routes (`/`, `/monitoring`, `/investigations`, `/investigations/{event_id}`, `/how-it-works`, `/methodology`) returned HTTP 200.
 - Queue timestamp formatting now reuses the monitoring page's `en-IN` / `Asia/Kolkata` formatter; the final display was checked in a populated browser view.
 - No separate frontend lint or test script is defined in `frontend/package.json`; the production build is the available frontend check.

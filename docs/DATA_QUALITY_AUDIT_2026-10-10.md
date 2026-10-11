@@ -18,9 +18,9 @@ invoke the investigation agent or a model.
 
 ## Production corrections
 
-- Commit `da7808a` fixed the code path that synthesized a zero blindness score
+- Commit `6ed1c325` fixed the code path that synthesized a zero blindness score
   from any quality-valid coverage row.
-- Commit `645e64a` deployed projection hydration, comparison deduplication,
+- Commit `f07a89ce` deployed projection hydration, comparison deduplication,
   and corridor limitation corrections through Backend CI/CD. Backend and
   Dashboard CI/CD workflows succeeded for that commit.
 - A one-time idempotent DynamoDB repair refreshed the 250 event summaries,

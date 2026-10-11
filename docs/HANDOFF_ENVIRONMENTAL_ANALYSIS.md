@@ -8,7 +8,7 @@ the completed 250-event production audit, corrections, and live verification.
 ## Verified current state
 
 - Backend and frontend deploy through the existing GitHub Actions OIDC workflows. Backend runs execute unit tests, SAM validation/build, deploy the SAM stack, and smoke-test the live API.
-- Commits `792904f`, `aacd856`, `c0e3a2e`, and `6ed6547` fixed stale feature fallbacks and derived-evidence pagination. The latest backend deployment completed successfully in workflow `38030910017`.
+- Commits `0f2e6835`, `9a0b51f8`, `fb2a5691`, and `5007e411` fixed stale feature fallbacks and derived-evidence pagination. The latest backend deployment completed successfully in workflow `38030910017`.
 - Production `/api/map-layers?layer=sensor-disagreement&limit=250` returns four source-matched comparisons, all `AGREEMENT`: two against `MODIS_AQUA`, one `VIIRS_NOAA20`, and one `VIIRS_SNPP`. Each has attached source evidence IDs. Agreement is not fire confirmation.
 - After the 2026-10-10 repair, the production exposure map layer returns sourced estimates for all 250 replay events; the blind-spot layer correctly returns unavailable with 0 items because valid coverage/observability inputs are absent. Do not synthesize absent data.
 - The 250 event environmental projections now agree with source evidence. Four sensor comparisons are unique and source matched; all report agreement, which is not confirmation. Two positive detections previously mislabeled as coverage are preserved as observations and marked invalid for coverage scoring.

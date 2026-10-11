@@ -1,6 +1,6 @@
 # BurnBlind — Master Checklist
 
-## Current implementation status (2026-10-10, post-deployment verification)
+## Current implementation status (2026-10-11, post-deployment verification)
 
 The application foundation and feature code are substantially implemented, but
 the end-to-end release is **not complete**. A checked implementation item does
@@ -9,10 +9,10 @@ not imply that its live data source or deployed AWS path has been verified.
 | Area | Implemented | Still required for release |
 | --- | --- | --- |
 | Frontend | Landing, monitoring, event detail, investigation, replay, and methodology views; responsive map-first UI; Amplify CI deployment returned HTTP 200 | Browser interaction and visual review at desktop/mobile widths |
-| Feature upgrade | Scoring, comparison, exposure, replay, human outcome, event-scoped agent paths exist; four independent FIRMS comparisons and 250 sourced exposure estimates are visible in production | Attach complete historical/coverage/score evidence to replay; validate more live-source cases |
+| Feature upgrade | Scoring, comparison, exposure, replay, human outcome, event-scoped agent paths exist; four independent source-matched comparisons and 250 sourced exposure estimates are visible in production | Attach valid historical and sensor-coverage evidence before publishing blind-spot scores; validate more live-source cases |
 | Agent | Strands integration, event-scoped evidence packet/report, DeepSeek V3.2 Mantle; cross-sensor status handling and retry race regressions covered by unit tests | Broader model scenario evaluation and live integration coverage |
 | AWS | Amplify and backend OIDC workflows passed; SAM stack deployed; health, summary, event, action-center, investigation, map-layer and CORS smoke checks passed; one queue-to-report flow verified; Cognito JWT protects both API path forms and anonymous mutation probes return 401 | Invited-reviewer write test, security/cost review and ongoing operational verification |
-| Data | GK2A replay sample is present; weather and WorldPop adapters are implemented | FIRMS key/reference data, licensing review, live source checks, full artifact lifecycle |
+| Data | GK2A replay sample, six matched NASA FIRMS observations, four unique comparisons, and 250 ERA5/WorldPop estimates are present; FIRMS MAP_KEY metadata is in Secrets Manager | Broader licensing review, live-source checks, and valid sensor-coverage measurements |
 | Quality | 115 tests, production frontend build, SAM validation, deployed API/CORS/auth smoke checks, production sensor map shows four sourced comparisons, all 250 environmental projections audited and repaired | Browser e2e, authenticated reviewer write, source-to-storage integration, security and cost review |
 
 The production S3 artifact bucket uses versioning and expires noncurrent versions
@@ -154,7 +154,7 @@ still needed to complete the authenticated sign-in and outcome-write check.
 
 ## Local verification and remaining release gates (2026-10-10)
 
-- [x] pytest -q: 110 passed (2026-10-10)
+- [x] pytest -q: 115 passed (2026-10-10)
 - [x] npm run build: Vite production build passed
 - [x] sam validate --lint --template-file infrastructure/sam/template.yaml
 - [x] sam build --template-file infrastructure/sam/template.yaml
@@ -163,11 +163,11 @@ still needed to complete the authenticated sign-in and outcome-write check.
 - [x] Backend changes deployed and smoke-tested against AWS
 - [x] Deployed API smoke checker verified against health, events, action center, blind-spot layer, investigations, and both anonymous protected POST routes
 - [x] CI/CD role expanded with a repository/branch-scoped SAM deployment role and runtime permissions boundary
-- [ ] NASA FIRMS MAP_KEY stored in AWS Secrets Manager and historical comparison records acquired
+- [x] NASA FIRMS MAP_KEY metadata stored in AWS Secrets Manager; six historical observations matched to four events
 - [x] One live DeepSeek V3.2 investigation completed after AWS role setup; report persisted and returned by the investigations API
 - [x] Production sensor-comparison map displays four independently sourced matching observation comparisons
 - [x] Production exposure map displays source-derived estimates; no agent investigation is triggered by environmental attachment
 - [x] S3 artifact versioning and approved 90-day noncurrent lifecycle policy deployed and verified
 - [ ] Historical context and observation-coverage records attached to replay events before publishing score or blindness layers
 
-**Release note:** frontend and backend use separate GitHub OIDC roles scoped to this repository's `main` branch. The backend deploy role can update only `burnblind-replay` and pass the dedicated CloudFormation execution role. Lambda roles receive the `BurnBlindRuntimeBoundary` permissions boundary. Backend deployment and one event-scoped model run passed on 2026-10-09. No FIRMS key was found in Secrets Manager or GitHub secrets; provide only its Secrets Manager ARN/name, never the key value in chat.
+**Release note:** frontend and backend use separate GitHub OIDC roles scoped to this repository's `main` branch. The backend deploy role can update only `burnblind-replay` and pass the dedicated CloudFormation execution role. Lambda roles receive the `BurnBlindRuntimeBoundary` permissions boundary. Backend deployment and one event-scoped model run passed on 2026-10-09. The NASA FIRMS MAP_KEY is stored in AWS Secrets Manager as `burnblind/firms-map-key`; only its metadata was inspected for this audit, and its value must never be copied into source, logs, or chat.
