@@ -22,7 +22,7 @@ The public dashboard supports reading replay data. Investigation requests and re
 
 - **Monitoring map:** browse 250 historical candidate events and open a candidate to inspect its source observations.
 - **Environmental context:** inspect the nearest preceding ERA5 hourly estimate and WorldPop population estimates within a directional screening corridor.
-- **Historical activity:** inspect same-grid, same-month GK2A detection counts from complete prior years, with source lineage and temporal cutoffs. These are historical detection records, not unique fires or confirmation.
+- **Historical activity:** environmental enrichment derives same-grid, same-month GK2A detection counts from complete prior years, with source lineage and temporal cutoffs. These are historical detection records, not unique fires or confirmation.
 - **Sensor comparison:** inspect four source-matched comparisons. They currently report agreement; agreement is not proof of a fire.
 - **Investigation:** request an event-scoped, evidence-grounded report from the Strands agent. Environmental enrichment by itself does not launch an investigation for every event.
 - **Human review:** inspect findings and uncertainty, then record an authorized reviewer outcome.
@@ -38,7 +38,7 @@ Live API values checked on **October 11, 2026**:
 | Weather estimates | 250 | Open-Meteo ERA5 reanalysis context, not local station readings |
 | Population estimates | 250 | WorldPop modelled population within a screening corridor, not people known to be affected |
 | Matched sensor comparisons | 4 | Source-matched observations; all currently report `AGREEMENT` |
-| Historical source index | 352,435 detections · 3,856 grids | Pinned GK2A archive (2019–2025, October–November); scoring uses complete prior years only |
+| Bundled historical source index | 352,435 detections · 3,856 grids | Pinned GK2A archive (2019–2025, October–November); enrichment uses complete prior years only |
 | Valid sensor-coverage / blind-spot scores | 0 | The replay has no valid, normalized coverage measurements, so a score is correctly unavailable |
 
 The production data was audited and corrected across all 250 events. The audit explains the two invalid coverage artifacts, duplicate comparison pairs, and the fixes in [the data-quality report](docs/DATA_QUALITY_AUDIT_2026-10-10.md).
@@ -155,7 +155,7 @@ See [data sources](docs/DATA_SOURCES.md), [attribution](docs/ATTRIBUTION.md), an
 
 - The production replay has source-backed weather and exposure estimates for its 250 events and four distinct sensor comparisons.
 - **Blind-spot scoring is unavailable for this replay.** Valid sensor-coverage and quality measurements have not been attached. This is a data gap, not a score of zero.
-- Historical activity now contributes as a cited, time-safe deterministic feature for supported events. Scores remain heuristic, and the replay still lacks valid coverage inputs for blindness and final priority; no missing values are replaced with zero.
+- Historical activity is implemented and deployed as a cited, time-safe deterministic feature. Existing production event rows still need a one-time data-only refresh before that context and the recalculated scores appear in their reports; this refresh will not invoke the Investigation Agent. Scores remain heuristic, and the replay still lacks valid coverage inputs for blindness and final priority; no missing values are replaced with zero.
 - An event-scoped investigation flow has been deployed and a live model-backed report was previously verified. The broader model evaluation set and authenticated reviewer write flow remain incomplete; see the [agent evaluation notes](docs/AGENT_EVALUATION.md) and [release checklist](docs/CHECKLIST.md).
 - The product covers a limited historical geography and period. External providers can be unavailable or revise their data.
 
